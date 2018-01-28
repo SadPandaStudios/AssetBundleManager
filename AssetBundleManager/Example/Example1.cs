@@ -22,8 +22,10 @@ namespace AssetBundles
         {
             if (bundle != null) {
                 // Do something with the bundle
-                this.abm.UnloadBundle(bundle);
+                abm.UnloadBundle(bundle);
             }
+
+            abm.Dispose();
         }
     }
 }

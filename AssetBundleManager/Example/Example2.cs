@@ -18,6 +18,8 @@ namespace AssetBundles
                 // Do something with the bundle
                 abm.UnloadBundle(bundle.AssetBundle);
             }
+
+            abm.Dispose();
         }
     }
 }
