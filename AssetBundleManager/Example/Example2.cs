@@ -16,6 +16,7 @@ namespace AssetBundles
 
             if (bundle.AssetBundle != null) {
                 // Do something with the bundle
+                abm.UnloadBundle(bundle.AssetBundle);
             }
         }
     }
