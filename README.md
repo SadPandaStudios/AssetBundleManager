@@ -39,7 +39,7 @@ abm.Initialize(OnAssetBundleManagerInitialized);
 
 The `SetBaseUri(...)` function configures ABM to point to a remote server that contains your bundles.
 
-Calling `Initialize(...)` causes ABM to download the manifest file your your bundles.  Once this file is downloaded and processed you are ready to begin downloading bundles.
+Calling `Initialize(...)` causes ABM to download the manifest file for your bundles.  Once this file is downloaded and processed you are ready to begin downloading bundles.
 
 If you prefer to use a coroutine instad of a callback for initializing:
 
@@ -51,7 +51,7 @@ yield return abm.InitializeAsync();
 
 
 ### Downloading
-Just like initializing you can use either callbacks for coroutines to download bundles.
+Just like initializing you can use either callbacks or coroutines to download bundles.
 
 #### Callback
 ```csharp
@@ -93,7 +93,7 @@ Notice that the above examples call `UnloadBundle(...)` after they are done usin
 
 
 ### StreamingAssets
-ABM supports pre-caching your bundles with the use of the StreamingAssets folder in Unity.  Once your bundles are build you can copy the manifest and any number of bundles to the `StreamingAsests\PLATFORM` folder in your project.  For example if you wanted to pre-cache the `SomeBundle` iOS bundles you would have a structure like:
+ABM supports pre-caching your bundles with the use of the StreamingAssets folder in Unity.  Once your bundles are built you can copy the manifest and any number of bundles to the `StreamingAsests\PLATFORM` folder in your project.  For example if you wanted to pre-cache the `SomeBundle` iOS bundles you would have a structure like:
 
 ```
 PROJECT
@@ -106,7 +106,7 @@ PROJECT
         \SomeBundle.manifest
 ```
 
-When you make a `GetBundle(...)` call ABM will check to see if that bundle exists in the StreamingAssets folder first and use it if it's hash matches the hash of the remote server.  If the file does not exist OR the hash is different then the remote bundle is used.  You can change this behaviour when initializing ABM by changing the prioritization strategy:
+When you make a `GetBundle(...)` call ABM will check to see if that bundle exists in the StreamingAssets folder first and use it if its hash matches the hash of the remote server.  If the file does not exist OR the hash is different then the remote bundle is used.  You can change this behaviour when initializing ABM by changing the prioritization strategy:
 
 ```csharp
 abm.SetPrioritizationStrategy(PrioritizationStrategy.PrioritizeStreamingAssets);
