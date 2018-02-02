@@ -37,15 +37,19 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager SetBaseUri(string uri)
         {
-            if (string.IsNullOrEmpty(baseUri))
+            if (uri == baseUri) return this;
+
+            if (string.IsNullOrEmpty(baseUri)) {
                 Debug.LogFormat("Setting base uri to [{0}].", uri);
-            else
+            } else {
                 Debug.LogWarningFormat("Overriding base uri from [{0}] to [{1}].", baseUri, uri);
+            }
 
             var builder = new StringBuilder(uri);
 
-            if (!uri.EndsWith("/"))
+            if (!uri.EndsWith("/")) {
                 builder.Append("/");
+            }
 
             builder.Append(Utility.GetPlatformName()).Append("/");
             baseUri = builder.ToString();
