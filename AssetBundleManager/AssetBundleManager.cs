@@ -58,7 +58,7 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager SetPrioritizationStrategy(PrioritizationStrategy strategy)
         {
-            this.defaultPrioritizationStrategy = strategy;
+            defaultPrioritizationStrategy = strategy;
             return this;
         }
 
@@ -90,7 +90,7 @@ namespace AssetBundles
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         /// </summary>
-        /// <returns>An IEnumerator that can be yield'ed to until the system is ready.</returns>
+        /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
         public IEnumerator InitializeAsync()
         {
             if (string.IsNullOrEmpty(baseUri)) {
@@ -116,7 +116,7 @@ namespace AssetBundles
             handler = new AssetBundleDownloader(baseUri);
 
             if (Application.isEditor == false) {
-                handler = new StreamingAssetsBundleDownloadDecorator(handler, this.defaultPrioritizationStrategy);
+                handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
             }
 
             handler.Handle(new AssetBundleDownloadCommand {
@@ -127,18 +127,26 @@ namespace AssetBundles
 
         private void OnInitializationComplete(AssetBundle manifestBundle)
         {
-            if (manifestBundle == null) {
-                Debug.LogError("AssetBundleManifest not found.");
-                downloadsInProgress.Remove(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY);
-                return;
-            }
-
-            manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
-            manifestBundle.Unload(false);
-
             var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
             downloadsInProgress.Remove(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY);
-            inProgress.OnComplete.Invoke(null);
+
+            if (manifestBundle == null) {
+                Debug.LogError("AssetBundleManifest not found.");
+
+                var streamingAssetsDecorator = handler as StreamingAssetsBundleDownloadDecorator;
+                if (streamingAssetsDecorator != null) {
+                    manifest = streamingAssetsDecorator.GetManifest();
+
+                    if (manifest != null) {
+                        Debug.LogWarning("Falling back to streaming assets for bundle information.");
+                    }
+                }
+            } else {
+                manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
+                manifestBundle.Unload(false);
+            }
+
+            inProgress.OnComplete(null);
         }
 
         /// <summary>
@@ -195,10 +203,11 @@ namespace AssetBundles
             var dependenciesToDownload = new List<string>();
 
             for (int i = 0; i < dependencies.Length; i++) {
-                if (activeBundles.TryGetValue(dependencies[i], out active))
+                if (activeBundles.TryGetValue(dependencies[i], out active)) {
                     active.References++;
-                else
+                } else {
                     dependenciesToDownload.Add(dependencies[i]);
+                }
             }
 
             if (dependenciesToDownload.Count > 0) {
@@ -238,7 +247,7 @@ namespace AssetBundles
                 cache.AssetBundle.Unload(true);
             }
 
-            this.activeBundles.Clear();
+            activeBundles.Clear();
         }
 
         /// <summary>
@@ -282,8 +291,9 @@ namespace AssetBundles
                 cache.AssetBundle.Unload(unloadAllLoadedObjects);
                 activeBundles.Remove(bundleName);
 
-                for (int i = 0; i < cache.Dependencies.Length; i++)
+                for (int i = 0; i < cache.Dependencies.Length; i++) {
                     UnloadBundle(cache.Dependencies[i], unloadAllLoadedObjects, force);
+                }
             }
         }
 
@@ -301,7 +311,7 @@ namespace AssetBundles
                 Dependencies = manifest.GetDirectDependencies(bundleName)
             });
 
-            inProgress.OnComplete.Invoke(bundle);
+            inProgress.OnComplete(bundle);
         }
 
         internal class AssetBundleContainer
@@ -318,8 +328,8 @@ namespace AssetBundles
 
             public DownloadInProgressContainer(Action<AssetBundle> onComplete)
             {
-                this.References = 1;
-                this.OnComplete = onComplete;
+                References = 1;
+                OnComplete = onComplete;
             }
         }
     }

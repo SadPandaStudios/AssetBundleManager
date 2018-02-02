@@ -103,7 +103,7 @@ namespace AssetBundles
 
             AssetBundle bundle = ((DownloadHandlerAssetBundle)req.downloadHandler).assetBundle;
 
-            if (!req.isNetworkError && !req.isHttpError && bundle == null) {
+            if (!req.isNetworkError && !req.isHttpError && string.IsNullOrEmpty(req.error) && bundle == null) {
                 Debug.LogWarning(string.Format("There was no error downloading [{0}] but the bundle is null.  Assuming there's something wrong with the cache folder, retrying with cache disabled now and for future requests...", uri));
                 cachingDisabled = true;
                 req.Dispose();
@@ -123,59 +123,6 @@ namespace AssetBundles
                 if (downloadQueue.Count > 0)
                     InternalHandle(downloadQueue.Dequeue());
             }
-        }
-    }
-
-    /// <summary>
-    ///     Decorator for AssetBundleDownloader that attempts to use assets in the StreamingAssets folder before moving to the
-    ///     next handler in the chain.
-    /// </summary>
-    public class StreamingAssetsBundleDownloadDecorator : ICommandHandler<AssetBundleDownloadCommand>
-    {
-        private string fullBundlePath;
-        private ICommandHandler<AssetBundleDownloadCommand> decorated;
-
-        private AssetBundleManifest manifest;
-        private Hash128 defaultHash = default(Hash128);
-        private AssetBundleManager.PrioritizationStrategy currentStrategy;
-
-        /// <param name="decorated">CommandHandler to use when the bundle is not available in StreamingAssets</param>
-        /// <param name="strategy">
-        ///     Strategy to use.  Defaults to having remote bundle override StreamingAssets bundle if the hashes
-        ///     are different
-        /// </param>
-        public StreamingAssetsBundleDownloadDecorator(ICommandHandler<AssetBundleDownloadCommand> decorated, AssetBundleManager.PrioritizationStrategy strategy)
-        {
-            this.decorated = decorated;
-            this.currentStrategy = strategy;
-
-            fullBundlePath = string.Format("{0}/{1}", Application.streamingAssetsPath, Utility.GetPlatformName());
-            var manifestBundle = AssetBundle.LoadFromFile(string.Format("{0}/{1}", fullBundlePath, Utility.GetPlatformName()));
-
-            if (manifestBundle == null) {
-                Debug.LogWarning("Unable to retrieve manifest file from StreamingAssets, disabling StreamingAssetsBundleDownloadDecorator.");
-            } else {
-                manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
-                manifestBundle.Unload(false);
-            }
-        }
-
-        public void Handle(AssetBundleDownloadCommand cmd)
-        {
-            // Never use StreamingAssets for bundles with the default hash (aka: never cached), always try to use it for bundles with a matching hash (Unless the strategy says otherwise)
-            if (manifest != null && cmd.Hash != defaultHash && (currentStrategy == AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets || manifest.GetAssetBundleHash(cmd.BundleName) == cmd.Hash)) {
-                Debug.Log(string.Format("Using StreamingAssets for bundle [{0}]", cmd.BundleName));
-                var bundle = AssetBundle.LoadFromFile(string.Format("{0}/{1}", fullBundlePath, cmd.BundleName));
-
-                if (bundle != null) {
-                    cmd.OnComplete(bundle);
-                    return;
-                }
-
-                Debug.LogWarning(string.Format("StreamingAssets download failed for bundle [{0}], switching to standard download.", cmd.BundleName));
-            }
-
-            decorated.Handle(cmd);
         }
     }
 }

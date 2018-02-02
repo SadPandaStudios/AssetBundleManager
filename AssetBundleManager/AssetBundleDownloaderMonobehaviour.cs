@@ -40,7 +40,7 @@ namespace AssetBundles
 
         public void HandleCoroutine(IEnumerator coroutine)
         {
-            this.StartCoroutine(coroutine);
+            StartCoroutine(coroutine);
         }
     }
 }
