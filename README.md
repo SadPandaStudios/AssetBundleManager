@@ -7,11 +7,11 @@ We felt the AssetBundleManager provided by Unity was complicated and out-dated..
 
 
 ## Requirements
- - Unity 5.4.1 or greater
+ - Unity 2017.1 or greater.
 
 
 ## Recommendations
-This asset pairs well with Unity's [Asset Bundle Browser](https://github.com/Unity-Technologies/AssetBundles-Browser) (ABB) tool.
+This module pairs well with Unity's [Asset Bundle Browser](https://github.com/Unity-Technologies/AssetBundles-Browser) (ABB) tool.
 
 
 ## How
@@ -41,13 +41,19 @@ The `SetBaseUri(...)` function configures ABM to point to a remote server that c
 
 Calling `Initialize(...)` causes ABM to download the manifest file for your bundles.  Once this file is downloaded and processed you are ready to begin downloading bundles.
 
-If you prefer to use a coroutine instad of a callback for initializing:
+If you prefer to use a coroutine instead of a callback for initializing:
 
 ```csharp
 var abm = new AssetBundleManager();
 // ...
-yield return abm.InitializeAsync();
+var initializeAsync = abm.InitializeAsyn();
+yield return initializeAsync;
+if (initializeAsync.Success) {
+    // ...
+}
 ```
+
+Both initialize calls will return a boolean to indicate whether the manifest was downloaded successfully or not.
 
 
 ### Downloading

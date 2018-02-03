@@ -13,9 +13,13 @@ namespace AssetBundles
             abm.Initialize(OnAssetBundleManagerInitialized);
         }
 
-        private void OnAssetBundleManagerInitialized()
+        private void OnAssetBundleManagerInitialized(bool success)
         {
-            abm.GetBundle("BundleNameHere", OnAssetBundleDownloaded);
+            if (success) {
+                abm.GetBundle("BundleNameHere", OnAssetBundleDownloaded);
+            } else {
+                Debug.LogError("Error initializing ABM.");
+            }
         }
 
         private void OnAssetBundleDownloaded(AssetBundle bundle)

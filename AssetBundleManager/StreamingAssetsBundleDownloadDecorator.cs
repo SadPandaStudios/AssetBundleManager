@@ -17,6 +17,7 @@ namespace AssetBundles
         private Hash128 defaultHash = default(Hash128);
         private AssetBundleManager.PrioritizationStrategy currentStrategy;
         private Action<IEnumerator> coroutineHandler;
+        private string currentPlatform;
 
         /// <param name="decorated">CommandHandler to use when the bundle is not available in StreamingAssets</param>
         /// <param name="strategy">
@@ -27,6 +28,7 @@ namespace AssetBundles
         {
             this.decorated = decorated;
             currentStrategy = strategy;
+            currentPlatform = Utility.GetPlatformName();
 
 #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -36,7 +38,7 @@ namespace AssetBundles
                 coroutineHandler = AssetBundleDownloaderMonobehaviour.Instance.HandleCoroutine;
 
             fullBundlePath = string.Format("{0}/{1}", Application.streamingAssetsPath, Utility.GetPlatformName());
-            var manifestBundle = AssetBundle.LoadFromFile(string.Format("{0}/{1}", fullBundlePath, Utility.GetPlatformName()));
+            var manifestBundle = AssetBundle.LoadFromFile(string.Format("{0}/{1}", fullBundlePath, currentPlatform));
 
             if (manifestBundle == null) {
                 Debug.LogWarning("Unable to retrieve manifest file from StreamingAssets, disabling StreamingAssetsBundleDownloadDecorator.");
@@ -64,8 +66,8 @@ namespace AssetBundles
 
         private IEnumerator InternalHandle(AssetBundleDownloadCommand cmd)
         {
-            // Never use StreamingAssets for bundles with the default hash (aka: never cached), always try to use it for bundles with a matching hash (Unless the strategy says otherwise)
-            if (manifest != null && cmd.Hash != defaultHash && (currentStrategy == AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets || manifest.GetAssetBundleHash(cmd.BundleName) == cmd.Hash)) {
+            // Never use StreamingAssets for the manifest bundle, always try to use it for bundles with a matching hash (Unless the strategy says otherwise)
+            if (manifest != null && cmd.BundleName != currentPlatform && (currentStrategy == AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets || manifest.GetAssetBundleHash(cmd.BundleName) == cmd.Hash)) {
                 Debug.Log(string.Format("Using StreamingAssets for bundle [{0}]", cmd.BundleName));
                 var request = AssetBundle.LoadFromFileAsync(string.Format("{0}/{1}", fullBundlePath, cmd.BundleName));
 

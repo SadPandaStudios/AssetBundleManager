@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -81,41 +80,42 @@ namespace AssetBundles
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         /// </summary>
         /// <param name="onComplete">Called when initialization is complete.</param>
-        public void Initialize(Action onComplete)
+        public void Initialize(Action<bool> onComplete)
         {
             if (string.IsNullOrEmpty(baseUri)) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return;
             }
 
-            GetManifest(Utility.GetPlatformName(), onComplete);
+            GetManifest(Utility.GetPlatformName(), bundle => onComplete(bundle != null));
         }
 
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         /// </summary>
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
-        public IEnumerator InitializeAsync()
+        public AssetBundleManifestAsync InitializeAsync()
         {
             if (string.IsNullOrEmpty(baseUri)) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return null;
             }
 
-            // Initializing the manifest doesn't return the manifest bundle directly so we redirect the call with a delegate.
-            return new AssetBundleAsync(Utility.GetPlatformName(), (bundleName, onComplete) => GetManifest(bundleName, () => onComplete(null)));
+            // Wrap the GetManifest with an async operation.  GetManifest doesn't return a bundle (because it unloads it immediately) so for AssetBundleAsync to properly 
+            // determine error state we send a fake bundle in if the request succeeded and a null if it failed.
+            return new AssetBundleManifestAsync(Utility.GetPlatformName(), GetManifest);
         }
 
-        private void GetManifest(string bundleName, Action onComplete)
+        private void GetManifest(string bundleName, Action<AssetBundle> onComplete)
         {
             DownloadInProgressContainer inProgress;
             if (downloadsInProgress.TryGetValue(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, out inProgress)) {
                 inProgress.References++;
-                inProgress.OnComplete += _ => onComplete();
+                inProgress.OnComplete += onComplete;
                 return;
             }
 
-            downloadsInProgress.Add(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, new DownloadInProgressContainer(_ => onComplete()));
+            downloadsInProgress.Add(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, new DownloadInProgressContainer(onComplete));
 
             handler = new AssetBundleDownloader(baseUri);
 
@@ -147,10 +147,14 @@ namespace AssetBundles
                 }
             } else {
                 manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
-                manifestBundle.Unload(false);
             }
 
-            inProgress.OnComplete(null);
+            inProgress.OnComplete(manifestBundle);
+
+            // Need to do this after OnComplete, otherwise the bundle will always be null
+            if (manifestBundle != null) {
+                manifestBundle.Unload(false);
+            }
         }
 
         /// <summary>
@@ -335,40 +339,6 @@ namespace AssetBundles
                 References = 1;
                 OnComplete = onComplete;
             }
-        }
-    }
-
-    /// <summary>
-    ///     An asynchronous wrapper for the AssetBundleManager downloading system
-    /// </summary>
-    public class AssetBundleAsync : IEnumerator
-    {
-        public AssetBundle AssetBundle;
-
-        public bool IsDone { get; private set; }
-
-        public AssetBundleAsync(string bundleName, Action<string, Action<AssetBundle>> callToAction)
-        {
-            IsDone = false;
-            callToAction(bundleName, OnAssetBundleComplete);
-        }
-
-        private void OnAssetBundleComplete(AssetBundle bundle)
-        {
-            AssetBundle = bundle;
-            IsDone = true;
-        }
-
-        public bool MoveNext()
-        {
-            return !IsDone;
-        }
-
-        public void Reset()
-        { }
-
-        public object Current {
-            get { return null; }
         }
     }
 }
