@@ -19,7 +19,7 @@ namespace AssetBundles
         public enum PrioritizationStrategy
         {
             PrioritizeRemote,
-            PrioritizeStreamingAssets
+            PrioritizeStreamingAssets,
         }
 
         private const string MANIFEST_DOWNLOAD_IN_PROGRESS_KEY = "__manifest__";
@@ -32,7 +32,7 @@ namespace AssetBundles
         private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>();
 
         /// <summary>
-        ///     Sets the uri that will be used as the base for all AssetBundle calls
+        ///     Sets the base uri used for AssetBundle calls.
         /// </summary>
         public AssetBundleManager SetBaseUri(string uri)
         {
@@ -56,23 +56,32 @@ namespace AssetBundles
         }
 
         /// <summary>
+        ///     Sets the base uri used for AssetBundle calls to the one created by the AssetBundleBrowser when the bundles are
+        ///     built.
+        ///     Used for easier testing in the editor
+        /// </summary>
+        public AssetBundleManager UseSimulatedUri()
+        {
+            SetBaseUri(string.Format("file://{0}/../AssetBundles/", Application.dataPath));
+            return this;
+        }
+
+        /// <summary>
+        ///     Sets the base uri used for AssetBundle calls to the StreamingAssets folder.
+        /// </summary>
+        public AssetBundleManager UseStreamingAssetsFolder()
+        {
+            SetBaseUri(Application.streamingAssetsPath);
+            return this;
+        }
+
+        /// <summary>
         ///     Changes the strategy used to determine what should happen when an asset bundle exists in both the StreamingAssets
         ///     folder and the remote server.  The default is to prioritize the remote asset over the StreamingAssets folder
         /// </summary>
         public AssetBundleManager SetPrioritizationStrategy(PrioritizationStrategy strategy)
         {
             defaultPrioritizationStrategy = strategy;
-            return this;
-        }
-
-        /// <summary>
-        ///     Sets the uri that will be used as the base for ass AssetBundle calls to the one created by the AssetBundleBrowser
-        ///     when bundles are built.
-        ///     Used for easier testing in the editor
-        /// </summary>
-        public AssetBundleManager UseSimulatedUri()
-        {
-            SetBaseUri(string.Format("file://{0}/../AssetBundles/", Application.dataPath));
             return this;
         }
 
@@ -117,11 +126,11 @@ namespace AssetBundles
 
             downloadsInProgress.Add(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, new DownloadInProgressContainer(onComplete));
 
+#if !UNITY_EDITOR && !UNITY_WEBGL
+            handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
+#else
             handler = new AssetBundleDownloader(baseUri);
-
-            if (Application.isEditor == false) {
-                handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
-            }
+#endif
 
             handler.Handle(new AssetBundleDownloadCommand {
                 BundleName = bundleName,
