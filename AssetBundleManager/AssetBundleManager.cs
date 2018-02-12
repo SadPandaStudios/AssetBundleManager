@@ -261,7 +261,9 @@ namespace AssetBundles
         public void Dispose()
         {
             foreach (var cache in activeBundles.Values) {
-                cache.AssetBundle.Unload(true);
+                if (cache.AssetBundle != null) {
+                    cache.AssetBundle.Unload(true);
+                }
             }
 
             activeBundles.Clear();
@@ -305,7 +307,10 @@ namespace AssetBundles
             if (!activeBundles.TryGetValue(bundleName, out cache)) return;
 
             if (force || --cache.References <= 0) {
-                cache.AssetBundle.Unload(unloadAllLoadedObjects);
+                if (cache.AssetBundle != null) {
+                    cache.AssetBundle.Unload(unloadAllLoadedObjects);
+                }
+
                 activeBundles.Remove(bundleName);
 
                 for (int i = 0; i < cache.Dependencies.Length; i++) {
