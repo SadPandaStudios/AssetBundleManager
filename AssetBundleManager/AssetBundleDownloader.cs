@@ -80,7 +80,11 @@ namespace AssetBundles
                 req = UnityWebRequest.GetAssetBundle(uri, cmd.Hash, 0);
             }
 
+#if UNITY_2017_3_OR_NEWER
+            req.SendWebRequest();
+#else
             req.Send();
+#endif
 
             while (!req.isDone)
                 yield return null;
