@@ -46,8 +46,9 @@ namespace AssetBundles
 #endif
                 coroutineHandler = AssetBundleDownloaderMonobehaviour.Instance.HandleCoroutine;
 
-            if (!this.baseUri.EndsWith("/"))
+            if (!this.baseUri.EndsWith("/")) {
                 this.baseUri += "/";
+            }
         }
 
         /// <summary>
@@ -86,8 +87,9 @@ namespace AssetBundles
             req.Send();
 #endif
 
-            while (!req.isDone)
+            while (!req.isDone) {
                 yield return null;
+            }
 
             if (req.isHttpError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}] [{2}]", uri, req.responseCode, req.error));
@@ -102,8 +104,9 @@ namespace AssetBundles
                 }
             }
 
-            if (req.isNetworkError)
+            if (req.isNetworkError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}]", uri, req.error));
+            }
 
             AssetBundle bundle = ((DownloadHandlerAssetBundle)req.downloadHandler).assetBundle;
 
@@ -124,8 +127,9 @@ namespace AssetBundles
 
                 activeDownloads--;
 
-                if (downloadQueue.Count > 0)
+                if (downloadQueue.Count > 0) {
                     InternalHandle(downloadQueue.Dequeue());
+                }
             }
         }
     }
