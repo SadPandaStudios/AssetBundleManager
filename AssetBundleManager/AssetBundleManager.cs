@@ -22,7 +22,18 @@ namespace AssetBundles
             PrioritizeStreamingAssets,
         }
 
+        public enum PrimaryManifestType
+        {
+            None,
+            Remote,
+            RemoteCached,
+            StreamingAssets,
+        }
+
+        public PrimaryManifestType PrimaryManifest { get; private set; }
+
         private const string MANIFEST_DOWNLOAD_IN_PROGRESS_KEY = "__manifest__";
+        private const string MANIFEST_PLAYERPREFS_KEY = "__abm_manifest_version__";
 
         private string baseUri;
         private PrioritizationStrategy defaultPrioritizationStrategy;
@@ -110,8 +121,7 @@ namespace AssetBundles
                 return null;
             }
 
-            // Wrap the GetManifest with an async operation.  GetManifest doesn't return a bundle (because it unloads it immediately) so for AssetBundleAsync to properly 
-            // determine error state we send a fake bundle in if the request succeeded and a null if it failed.
+            // Wrap the GetManifest with an async operation.
             return new AssetBundleManifestAsync(Utility.GetPlatformName(), GetManifest);
         }
 
@@ -132,22 +142,41 @@ namespace AssetBundles
             handler = new AssetBundleDownloader(baseUri);
 #endif
 
+            PrimaryManifest = PrimaryManifestType.Remote;
+            GetManifestInternal(bundleName, PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1, 1);
+        }
+
+        private void GetManifestInternal(string bundleName, int version, int attemptCount)
+        {
+            handler = new AssetBundleDownloader(baseUri);
+
+            if (Application.isEditor == false) {
+                handler = new StreamingAssetsBundleDownloadDecorator(handler, this.defaultPrioritizationStrategy);
+            }
+
             handler.Handle(new AssetBundleDownloadCommand {
                 BundleName = bundleName,
-                OnComplete = OnInitializationComplete
+                Version = (uint)version,
+                OnComplete = manifest => {
+                    if (manifest == null && attemptCount == 1 && version > 1) {
+                        PrimaryManifest = PrimaryManifestType.RemoteCached;
+                        Debug.Log("Unable to download manifest, attempting to use one previously downloaded.");
+                        GetManifestInternal(bundleName, version - 1, attemptCount + 1);
+                    } else {
+                        OnInitializationComplete(manifest, bundleName, version);
+                    }
+                }
             });
         }
 
-        private void OnInitializationComplete(AssetBundle manifestBundle)
+        private void OnInitializationComplete(AssetBundle manifestBundle, string bundleName, int version)
         {
-            var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
-            downloadsInProgress.Remove(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY);
-
             if (manifestBundle == null) {
                 Debug.LogError("AssetBundleManifest not found.");
 
                 var streamingAssetsDecorator = handler as StreamingAssetsBundleDownloadDecorator;
                 if (streamingAssetsDecorator != null) {
+                    PrimaryManifest = PrimaryManifestType.StreamingAssets;
                     manifest = streamingAssetsDecorator.GetManifest();
 
                     if (manifest != null) {
@@ -156,8 +185,19 @@ namespace AssetBundles
                 }
             } else {
                 manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
+                PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, version);
+
+#if UNITY_2017_1_OR_NEWER
+                Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, (uint)version));
+#endif
             }
 
+            if (manifest == null) {
+                PrimaryManifest = PrimaryManifestType.None;
+            }
+
+            var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
+            downloadsInProgress.Remove(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY);
             inProgress.OnComplete(manifestBundle);
 
             // Need to do this after OnComplete, otherwise the bundle will always be null
