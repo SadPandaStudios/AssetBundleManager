@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AssetBundles
@@ -108,6 +109,13 @@ namespace AssetBundles
             }
 
             GetManifest(Utility.GetPlatformName(), bundle => onComplete(bundle != null));
+        }
+
+        public async Task<bool> Initialize() {
+            var completionSource = new TaskCompletionSource<bool>();
+            var onComplete = new Action<bool>(b => completionSource.SetResult(b));
+            Initialize(onComplete);
+            return await completionSource.Task;
         }
 
         /// <summary>
@@ -219,8 +227,7 @@ namespace AssetBundles
         ///     <param name="bundleName">Name of the bundle to download.</param>
         ///     <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
         /// </summary>
-        public void GetBundle(string bundleName, Action<AssetBundle> onComplete)
-        {
+        public void GetBundle(string bundleName, Action<AssetBundle> onComplete) {
             GetBundle(bundleName, onComplete, DownloadSettings.UseCacheIfAvailable);
         }
 
@@ -236,8 +243,7 @@ namespace AssetBundles
         ///         regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
         ///     </param>
         /// </summary>
-        public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings)
-        {
+        public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings) {
             AssetBundleContainer active;
 
             if (activeBundles.TryGetValue(bundleName, out active)) {
@@ -289,6 +295,20 @@ namespace AssetBundles
             }
         }
 
+        public async Task<AssetBundle> GetBundle(string bundleName) {
+            var completionSource = new TaskCompletionSource<AssetBundle>();
+            var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
+            GetBundle(bundleName, onComplete);
+            return await completionSource.Task;
+        }
+
+        public async Task<AssetBundle> GetBundle(string bundleName, DownloadSettings downloadSettings) {
+            var completionSource = new TaskCompletionSource<AssetBundle>();
+            var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
+            GetBundle(bundleName, onComplete, downloadSettings);
+            return await completionSource.Task;
+        }
+
         /// <summary>
         ///     Asynchronously downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
         ///     Remember to call <see cref="UnloadBundle(UnityEngine.AssetBundle,bool)" /> for every bundle you download once you
@@ -296,16 +316,14 @@ namespace AssetBundles
         /// </summary>
         /// <param name="bundleName"></param>
         /// <returns></returns>
-        public AssetBundleAsync GetBundleAsync(string bundleName)
-        {
+        public AssetBundleAsync GetBundleAsync(string bundleName) {
             return new AssetBundleAsync(bundleName, GetBundle);
         }
 
         /// <summary>
         ///     Cleans up all downloaded bundles
         /// </summary>
-        public void Dispose()
-        {
+        public void Dispose() {
             foreach (var cache in activeBundles.Values) {
                 if (cache.AssetBundle != null) {
                     cache.AssetBundle.Unload(true);
@@ -319,8 +337,7 @@ namespace AssetBundles
         ///     Unloads an AssetBundle.  Objects that were loaded from this bundle will need to be manually destroyed.
         /// </summary>
         /// <param name="bundle">Bundle to unload.</param>
-        public void UnloadBundle(AssetBundle bundle)
-        {
+        public void UnloadBundle(AssetBundle bundle) {
             UnloadBundle(bundle.name, false, false);
         }
 
@@ -332,8 +349,7 @@ namespace AssetBundles
         ///     When true, all objects that were loaded from this bundle will be destroyed as
         ///     well. If there are game objects in your scene referencing those assets, the references to them will become missing.
         /// </param>
-        public void UnloadBundle(AssetBundle bundle, bool unloadAllLoadedObjects)
-        {
+        public void UnloadBundle(AssetBundle bundle, bool unloadAllLoadedObjects) {
             UnloadBundle(bundle.name, unloadAllLoadedObjects, false);
         }
 
@@ -346,8 +362,7 @@ namespace AssetBundles
         ///     well. If there are game objects in your scene referencing those assets, the references to them will become missing.
         /// </param>
         /// <param name="force">Unload the bundle even if we believe there are other dependencies on it.</param>
-        public void UnloadBundle(string bundleName, bool unloadAllLoadedObjects, bool force)
-        {
+        public void UnloadBundle(string bundleName, bool unloadAllLoadedObjects, bool force) {
             AssetBundleContainer cache;
 
             if (!activeBundles.TryGetValue(bundleName, out cache)) return;
@@ -368,8 +383,7 @@ namespace AssetBundles
         /// <summary>
         ///     Caches the downloaded bundle and pushes it to the onComplete callback.
         /// </summary>
-        private void OnDownloadComplete(string bundleName, AssetBundle bundle)
-        {
+        private void OnDownloadComplete(string bundleName, AssetBundle bundle) {
             var inProgress = downloadsInProgress[bundleName];
             downloadsInProgress.Remove(bundleName);
 
@@ -382,20 +396,17 @@ namespace AssetBundles
             inProgress.OnComplete(bundle);
         }
 
-        internal class AssetBundleContainer
-        {
+        internal class AssetBundleContainer {
             public AssetBundle AssetBundle;
             public int References = 1;
             public string[] Dependencies;
         }
 
-        internal class DownloadInProgressContainer
-        {
+        internal class DownloadInProgressContainer {
             public int References;
             public Action<AssetBundle> OnComplete;
 
-            public DownloadInProgressContainer(Action<AssetBundle> onComplete)
-            {
+            public DownloadInProgressContainer(Action<AssetBundle> onComplete) {
                 References = 1;
                 OnComplete = onComplete;
             }
