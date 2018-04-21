@@ -39,8 +39,8 @@ namespace AssetBundles
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
         private AssetBundleManifest manifest;
-        private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>();
-        private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>();
+        private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         ///     Sets the base uri used for AssetBundle calls.
