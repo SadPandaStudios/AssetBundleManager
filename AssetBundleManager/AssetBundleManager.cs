@@ -360,6 +360,31 @@ namespace AssetBundles
         }
 
         /// <summary>
+        ///     Returns if the Asset Bundle is already loaded
+        /// </summary>
+        public bool IsAssetBundleLoaded(string bundleName)
+        {
+            if (activeBundles.ContainsKey(bundleName)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+
+        /// <summary>
+        ///     Returns if the Asset Bundle is already downloading
+        /// </summary>
+        public bool IsAssetBundleDownloading(string bundleName)
+        {
+            if (downloadsInProgress.ContainsKey(bundleName)){
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        /// <summary>
         ///     Caches the downloaded bundle and pushes it to the onComplete callback.
         /// </summary>
         private void OnDownloadComplete(string bundleName, AssetBundle bundle)
