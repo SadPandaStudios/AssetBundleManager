@@ -371,13 +371,30 @@ namespace AssetBundles
             }
         }
 
+        /// <summary>
+        ///     Returns if the Asset Bundle is already loaded (out Bundle if loaded)
+        /// </summary>
+        public bool IsAssetBundleLoaded(string bundleName, out AssetBundle bundle)
+        {
+            AssetBundleContainer active;
+            if (activeBundles.TryGetValue(bundleName, out active))
+            {
+                bundle = active.AssetBundle;
+                return true;
+            }
+            else
+            {
+                bundle = null;
+                return false;
+            }
+        }
 
         /// <summary>
         ///     Returns if the Asset Bundle is already downloading
         /// </summary>
         public bool IsAssetBundleDownloading(string bundleName)
         {
-            if (downloadsInProgress.ContainsKey(bundleName)){
+            if (downloadsInProgress.ContainsKey(bundleName)) {
                 return true;
             } else {
                 return false;
