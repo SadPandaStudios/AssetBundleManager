@@ -1,7 +1,7 @@
 ﻿#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 #endif
-
 using UnityEngine;
 
 namespace AssetBundles
@@ -60,7 +60,7 @@ namespace AssetBundles
         }
 #endif
 
-                    private static string GetPlatformForAssetBundles(RuntimePlatform platform)
+        private static string GetPlatformForAssetBundles(RuntimePlatform platform)
         {
             switch (platform)
             {
