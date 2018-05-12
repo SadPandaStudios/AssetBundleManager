@@ -97,7 +97,15 @@ namespace AssetBundles
                 yield return null;
             }
 
-            if (req.isHttpError) {
+#if UNITY_2017_1_OR_NEWER
+            var isNetworkError = req.isNetworkError;
+            var isHttpError = req.isHttpError;
+#else
+            var isNetworkError = req.isError;
+            var isHttpError = (req.responseCode < 200 || req.responseCode > 299) && req.responseCode != 0;  // 0 indicates the cached version may have been downloaded.  If there was an error then req.isError should have a non-0 code.
+#endif
+
+            if (isHttpError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}] [{2}]", uri, req.responseCode, req.error));
 
                 if (retryCount < MAX_RETRY_COUNT && RETRY_ON_ERRORS.Contains(req.responseCode)) {
@@ -112,14 +120,14 @@ namespace AssetBundles
 
             AssetBundle bundle;
 
-            if (req.isNetworkError) {
+            if (isNetworkError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}]", uri, req.error));
                 bundle = null;
             } else {
                 bundle = DownloadHandlerAssetBundle.GetContent(req);
             }
 
-            if (!req.isNetworkError && !req.isHttpError && string.IsNullOrEmpty(req.error) && bundle == null) {
+            if (!isNetworkError && !isHttpError && string.IsNullOrEmpty(req.error) && bundle == null) {
                 Debug.LogWarning(string.Format("There was no error downloading [{0}] but the bundle is null.  Assuming there's something wrong with the cache folder, retrying with cache disabled now and for future requests...", uri));
                 cachingDisabled = true;
                 req.Dispose();
