@@ -30,6 +30,7 @@ namespace AssetBundles
             StreamingAssets,
         }
 
+        public AssetBundleManifest Manifest { get; private set; }
         public PrimaryManifestType PrimaryManifest { get; private set; }
 
         private const string MANIFEST_DOWNLOAD_IN_PROGRESS_KEY = "__manifest__";
@@ -38,7 +39,6 @@ namespace AssetBundles
         private string baseUri;
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
-        private AssetBundleManifest manifest;
         private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>(StringComparer.OrdinalIgnoreCase);
 
@@ -183,14 +183,14 @@ namespace AssetBundles
                 var streamingAssetsDecorator = handler as StreamingAssetsBundleDownloadDecorator;
                 if (streamingAssetsDecorator != null) {
                     PrimaryManifest = PrimaryManifestType.StreamingAssets;
-                    manifest = streamingAssetsDecorator.GetManifest();
+                    Manifest = streamingAssetsDecorator.GetManifest();
 
-                    if (manifest != null) {
+                    if (Manifest != null) {
                         Debug.LogWarning("Falling back to streaming assets for bundle information.");
                     }
                 }
             } else {
-                manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
+                Manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
 
 #if UNITY_2017_1_OR_NEWER
@@ -198,7 +198,7 @@ namespace AssetBundles
 #endif
             }
 
-            if (manifest == null) {
+            if (Manifest == null) {
                 PrimaryManifest = PrimaryManifestType.None;
             }
 
@@ -258,11 +258,11 @@ namespace AssetBundles
 
             var mainBundle = new AssetBundleDownloadCommand {
                 BundleName = bundleName,
-                Hash = downloadSettings == DownloadSettings.UseCacheIfAvailable ? manifest.GetAssetBundleHash(bundleName) : default(Hash128),
+                Hash = downloadSettings == DownloadSettings.UseCacheIfAvailable ? Manifest.GetAssetBundleHash(bundleName) : default(Hash128),
                 OnComplete = bundle => OnDownloadComplete(bundleName, bundle)
             };
 
-            var dependencies = manifest.GetDirectDependencies(bundleName);
+            var dependencies = Manifest.GetDirectDependencies(bundleName);
             var dependenciesToDownload = new List<string>();
 
             for (int i = 0; i < dependencies.Length; i++) {
@@ -376,7 +376,7 @@ namespace AssetBundles
             activeBundles.Add(bundleName, new AssetBundleContainer {
                 AssetBundle = bundle,
                 References = inProgress.References,
-                Dependencies = manifest.GetDirectDependencies(bundleName)
+                Dependencies = Manifest.GetDirectDependencies(bundleName)
             });
 
             inProgress.OnComplete(bundle);
