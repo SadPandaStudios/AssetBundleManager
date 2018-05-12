@@ -143,10 +143,16 @@ namespace AssetBundles
 #endif
 
             PrimaryManifest = PrimaryManifestType.Remote;
-            GetManifestInternal(bundleName, PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1, 1);
+
+            // The first attempt for the manifest should always be uncached.  The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
+            var manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
+            while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion)))
+                manifestVersion++;
+
+            GetManifestInternal(bundleName, manifestVersion, 1);
         }
 
-        private void GetManifestInternal(string bundleName, int version, int attemptCount)
+        private void GetManifestInternal(string bundleName, uint version, int attemptCount)
         {
             handler = new AssetBundleDownloader(baseUri);
 
@@ -156,7 +162,7 @@ namespace AssetBundles
 
             handler.Handle(new AssetBundleDownloadCommand {
                 BundleName = bundleName,
-                Version = (uint)version,
+                Version = version,
                 OnComplete = manifest => {
                     if (manifest == null && attemptCount == 1 && version > 1) {
                         PrimaryManifest = PrimaryManifestType.RemoteCached;
@@ -169,7 +175,7 @@ namespace AssetBundles
             });
         }
 
-        private void OnInitializationComplete(AssetBundle manifestBundle, string bundleName, int version)
+        private void OnInitializationComplete(AssetBundle manifestBundle, string bundleName, uint version)
         {
             if (manifestBundle == null) {
                 Debug.LogError("AssetBundleManifest not found.");
@@ -185,10 +191,10 @@ namespace AssetBundles
                 }
             } else {
                 manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
-                PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, version);
+                PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
 
 #if UNITY_2017_1_OR_NEWER
-                Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, (uint)version));
+                Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, version));
 #endif
             }
 
