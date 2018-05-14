@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+#if NET_4_6
+using System.Threading.Tasks;
+#endif
 
 namespace AssetBundles
 {
