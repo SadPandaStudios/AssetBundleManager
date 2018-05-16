@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+#if NET_4_6
+using System.Threading.Tasks;
+#endif
 
 namespace AssetBundles
 {
@@ -288,6 +292,45 @@ namespace AssetBundles
                 handler.Handle(mainBundle);
             }
         }
+
+#if NET_4_6
+
+        public async Task<bool> Initialize()
+        {
+            var completionSource = new TaskCompletionSource<bool>();
+            var onComplete = new Action<bool>(b => completionSource.SetResult(b));
+            Initialize(onComplete);
+            return await completionSource.Task;
+        }
+
+        public async Task<AssetBundle> GetBundle(string bundleName)
+        {
+            var completionSource = new TaskCompletionSource<AssetBundle>();
+            var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
+            GetBundle(bundleName, onComplete);
+            return await completionSource.Task;
+        }
+
+        public async Task<AssetBundle> GetBundle(string bundleName, DownloadSettings downloadSettings)
+        {
+            var completionSource = new TaskCompletionSource<AssetBundle>();
+            var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
+            GetBundle(bundleName, onComplete, downloadSettings);
+            return await completionSource.Task;
+        }
+
+        public async Task<AsyncOperation> LoadLevelAsync(string bundleName, string levelName, LoadSceneMode loadSceneMode)
+        {
+            try {
+                await GetBundle(bundleName);
+                return SceneManager.LoadSceneAsync(levelName, loadSceneMode);
+            } catch {
+                Debug.LogError($"Error while loading the scene {levelName} from {bundleName}");
+                throw;
+            }
+        }
+
+#endif
 
         /// <summary>
         ///     Asynchronously downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
