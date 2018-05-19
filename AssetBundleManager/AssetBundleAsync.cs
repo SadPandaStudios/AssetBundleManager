@@ -20,6 +20,12 @@ namespace AssetBundles
             callToAction(bundleName, OnAssetBundleComplete);
         }
 
+        public AssetBundleAsync()
+        {
+            IsDone = true;
+            Failed = true;
+        }
+
         private void OnAssetBundleComplete(AssetBundle bundle)
         {
             AssetBundle = bundle;

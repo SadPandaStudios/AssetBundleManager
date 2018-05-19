@@ -35,6 +35,7 @@ namespace AssetBundles
             StreamingAssets,
         }
 
+        public bool Initialized { get; private set; }
         public AssetBundleManifest Manifest { get; private set; }
         public PrimaryManifestType PrimaryManifest { get; private set; }
 
@@ -205,6 +206,8 @@ namespace AssetBundles
 
             if (Manifest == null) {
                 PrimaryManifest = PrimaryManifestType.None;
+            } else {
+                Initialized = true;
             }
 
             var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
@@ -226,6 +229,12 @@ namespace AssetBundles
         /// </summary>
         public void GetBundle(string bundleName, Action<AssetBundle> onComplete)
         {
+            if (Initialized == false) {
+                Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
+                onComplete(null);
+                return;
+            }
+
             GetBundle(bundleName, onComplete, DownloadSettings.UseCacheIfAvailable);
         }
 
@@ -243,6 +252,12 @@ namespace AssetBundles
         /// </summary>
         public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings)
         {
+            if (Initialized == false) {
+                Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
+                onComplete(null);
+                return;
+            }
+
             AssetBundleContainer active;
 
             if (activeBundles.TryGetValue(bundleName, out active)) {
@@ -341,6 +356,11 @@ namespace AssetBundles
         /// <returns></returns>
         public AssetBundleAsync GetBundleAsync(string bundleName)
         {
+            if (Initialized == false) {
+                Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
+                return new AssetBundleAsync();
+            }
+
             return new AssetBundleAsync(bundleName, GetBundle);
         }
 
@@ -364,6 +384,7 @@ namespace AssetBundles
         /// <param name="bundle">Bundle to unload.</param>
         public void UnloadBundle(AssetBundle bundle)
         {
+            if (bundle == null) return;
             UnloadBundle(bundle.name, false, false);
         }
 
@@ -377,6 +398,7 @@ namespace AssetBundles
         /// </param>
         public void UnloadBundle(AssetBundle bundle, bool unloadAllLoadedObjects)
         {
+            if (bundle == null) return;
             UnloadBundle(bundle.name, unloadAllLoadedObjects, false);
         }
 
@@ -391,6 +413,8 @@ namespace AssetBundles
         /// <param name="force">Unload the bundle even if we believe there are other dependencies on it.</param>
         public void UnloadBundle(string bundleName, bool unloadAllLoadedObjects, bool force)
         {
+            if (bundleName == null) return;
+
             AssetBundleContainer cache;
 
             if (!activeBundles.TryGetValue(bundleName, out cache)) return;
