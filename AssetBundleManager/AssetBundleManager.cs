@@ -224,9 +224,9 @@ namespace AssetBundles
         ///     Downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
         ///     Remember to call <see cref="UnloadBundle(UnityEngine.AssetBundle,bool)" /> for every bundle you download once you
         ///     are done with it.
-        ///     <param name="bundleName">Name of the bundle to download.</param>
-        ///     <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
         /// </summary>
+        /// <param name="bundleName">Name of the bundle to download.</param>
+        /// <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
         public void GetBundle(string bundleName, Action<AssetBundle> onComplete)
         {
             if (Initialized == false) {
@@ -242,14 +242,14 @@ namespace AssetBundles
         ///     Downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
         ///     Remember to call <see cref="UnloadBundle(UnityEngine.AssetBundle,bool)" /> for every bundle you download once you
         ///     are done with it.
-        ///     <param name="bundleName">Name of the bundle to download.</param>
-        ///     <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
-        ///     <param name="downloadSettings">
-        ///         Tell the function to use a previously downloaded version of the bundle if available.
-        ///         Important!  If the bundle is currently "active" (it has not been unloaded) then the active bundle will be used
-        ///         regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
-        ///     </param>
         /// </summary>
+        /// <param name="bundleName">Name of the bundle to download.</param>
+        /// <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
+        /// <param name="downloadSettings">
+        ///     Tell the function to use a previously downloaded version of the bundle if available.
+        ///     Important!  If the bundle is currently "active" (it has not been unloaded) then the active bundle will be used
+        ///     regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
+        /// </param>
         public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings)
         {
             if (Initialized == false) {
@@ -310,6 +310,9 @@ namespace AssetBundles
         }
 
 #if NET_4_6
+        /// <summary>
+        ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        /// </summary>
         public async Task<bool> Initialize()
         {
             var completionSource = new TaskCompletionSource<bool>();
@@ -318,6 +321,12 @@ namespace AssetBundles
             return await completionSource.Task;
         }
 
+        /// <summary>
+        ///     Downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
+        ///     Remember to call <see cref="UnloadBundle(UnityEngine.AssetBundle,bool)" /> for every bundle you download once you
+        ///     are done with it.
+        /// </summary>
+        /// <param name="bundleName">Name of the bundle to download.</param>
         public async Task<AssetBundle> GetBundle(string bundleName)
         {
             var completionSource = new TaskCompletionSource<AssetBundle>();
@@ -326,6 +335,17 @@ namespace AssetBundles
             return await completionSource.Task;
         }
 
+        /// <summary>
+        ///     Downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
+        ///     Remember to call <see cref="UnloadBundle(UnityEngine.AssetBundle,bool)" /> for every bundle you download once you
+        ///     are done with it.
+        /// </summary>
+        /// <param name="bundleName">Name of the bundle to download.</param>
+        /// <param name="downloadSettings">
+        ///     Tell the function to use a previously downloaded version of the bundle if available.
+        ///     Important!  If the bundle is currently "active" (it has not been unloaded) then the active bundle will be used
+        ///     regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
+        /// </param>
         public async Task<AssetBundle> GetBundle(string bundleName, DownloadSettings downloadSettings)
         {
             var completionSource = new TaskCompletionSource<AssetBundle>();
@@ -334,6 +354,13 @@ namespace AssetBundles
             return await completionSource.Task;
         }
 
+        /// <summary>
+        ///     Downloads a bundle (or uses a cached bundle) and loads a Unity scene contained in an asset bundle asynchronously.
+        /// </summary>
+        /// <param name="bundleName">Name of the bundle to donwnload.</param>
+        /// <param name="levelName">Name of the unity scene to load.</param>
+        /// <param name="loadSceneMode">See <see cref="LoadSceneMode">UnityEngine.SceneManagement.LoadSceneMode</see>.</param>
+        /// <returns></returns>
         public async Task<AsyncOperation> LoadLevelAsync(string bundleName, string levelName, LoadSceneMode loadSceneMode)
         {
             try {
