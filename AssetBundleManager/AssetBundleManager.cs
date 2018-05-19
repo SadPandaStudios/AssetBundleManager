@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+
 #if NET_4_6
+using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 #endif
 
@@ -294,7 +295,6 @@ namespace AssetBundles
         }
 
 #if NET_4_6
-
         public async Task<bool> Initialize()
         {
             var completionSource = new TaskCompletionSource<bool>();
