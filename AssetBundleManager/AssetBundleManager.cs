@@ -43,10 +43,12 @@ namespace AssetBundles
         private const string MANIFEST_PLAYERPREFS_KEY = "__abm_manifest_version__";
 
         private string baseUri;
+        private bool useHash;
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
         private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, string> unhashedToHashedBundleNameMap = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         ///     Sets the base uri used for AssetBundle calls.
@@ -99,6 +101,21 @@ namespace AssetBundles
         public AssetBundleManager SetPrioritizationStrategy(PrioritizationStrategy strategy)
         {
             defaultPrioritizationStrategy = strategy;
+            return this;
+        }
+
+        /// <summary>
+        ///     Tell ABM to append the hash name to bundle names before downloading.
+        ///     If you are using AssetBundleBrowser then you need to enable "Append Hash" in the advanced settings for this to
+        ///     work.
+        /// </summary>
+        public AssetBundleManager AppendHashToBundleNames(bool appendHash = true)
+        {
+            if (appendHash && Initialized) {
+                GenerateUnhashToHashMap(Manifest);
+            }
+
+            useHash = appendHash;
             return this;
         }
 
@@ -208,6 +225,7 @@ namespace AssetBundles
                 PrimaryManifest = PrimaryManifestType.None;
             } else {
                 Initialized = true;
+                GenerateUnhashToHashMap(Manifest);
             }
 
             var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
@@ -217,6 +235,20 @@ namespace AssetBundles
             // Need to do this after OnComplete, otherwise the bundle will always be null
             if (manifestBundle != null) {
                 manifestBundle.Unload(false);
+            }
+        }
+
+        private void GenerateUnhashToHashMap(AssetBundleManifest manifest)
+        {
+            unhashedToHashedBundleNameMap.Clear();
+
+            var splitChar = new[] { '_' };
+            var allBundles = manifest.GetAllAssetBundles();
+
+            for (int i = 0; i < allBundles.Length; i++) {
+                var split = allBundles[i].Split(splitChar, 2);
+                if (split.Length != 2) continue;
+                unhashedToHashedBundleNameMap[split[0]] = allBundles[i];
             }
         }
 
@@ -256,6 +288,14 @@ namespace AssetBundles
                 Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
                 onComplete(null);
                 return;
+            }
+
+            if (useHash) {
+                try {
+                    bundleName = unhashedToHashedBundleNameMap[bundleName];
+                } catch {
+                    Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
+                }
             }
 
             AssetBundleContainer active;
