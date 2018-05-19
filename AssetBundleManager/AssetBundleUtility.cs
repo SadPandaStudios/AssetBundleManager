@@ -1,8 +1,8 @@
-﻿#if UNITY_EDITOR
-using UnityEngine;
+﻿using UnityEngine;
+
+#if UNITY_EDITOR
 using UnityEditor;
 #endif
-using UnityEngine;
 
 namespace AssetBundles
 {
@@ -22,8 +22,7 @@ namespace AssetBundles
 #if UNITY_EDITOR
         private static string GetPlatformForAssetBundles(BuildTarget target)
         {
-            switch (target)
-            {
+            switch (target) {
                 case BuildTarget.Android:
                     return "Android";
                 case BuildTarget.iOS:
@@ -62,8 +61,7 @@ namespace AssetBundles
 
         private static string GetPlatformForAssetBundles(RuntimePlatform platform)
         {
-            switch (platform)
-            {
+            switch (platform) {
                 case RuntimePlatform.Android:
                     return "Android";
                 case RuntimePlatform.IPhonePlayer:

@@ -14,7 +14,6 @@ namespace AssetBundles
         private ICommandHandler<AssetBundleDownloadCommand> decorated;
 
         private AssetBundleManifest manifest;
-        private Hash128 defaultHash = default(Hash128);
         private AssetBundleManager.PrioritizationStrategy currentStrategy;
         private Action<IEnumerator> coroutineHandler;
         private string currentPlatform;
