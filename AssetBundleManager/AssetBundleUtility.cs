@@ -20,7 +20,7 @@ namespace AssetBundles
         }
 
 #if UNITY_EDITOR
-        private static string GetPlatformForAssetBundles(BuildTarget target)
+        public static string GetPlatformForAssetBundles(BuildTarget target)
         {
             switch (target) {
                 case BuildTarget.Android:
@@ -59,7 +59,7 @@ namespace AssetBundles
         }
 #endif
 
-        private static string GetPlatformForAssetBundles(RuntimePlatform platform)
+        public static string GetPlatformForAssetBundles(RuntimePlatform platform)
         {
             switch (platform) {
                 case RuntimePlatform.Android:
