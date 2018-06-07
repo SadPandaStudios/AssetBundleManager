@@ -12,6 +12,7 @@ namespace AssetBundles
         public string BundleName;
         public Hash128 Hash;
         public uint Version;
+        public Action<float> OnProgress;
         public Action<AssetBundle> OnComplete;
     }
 
@@ -107,6 +108,7 @@ namespace AssetBundles
 
             while (!req.isDone) {
                 yield return null;
+                if (cmd.OnProgress != null) cmd.OnProgress(req.downloadProgress);
             }
 
 #if UNITY_2017_1_OR_NEWER

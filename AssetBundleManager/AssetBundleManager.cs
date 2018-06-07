@@ -148,6 +148,22 @@ namespace AssetBundles
             return new AssetBundleManifestAsync(Utility.GetPlatformName(), GetManifest);
         }
 
+        public void RegisterDownloadProgressHandler(string bundleName, Action<float> onProgress)
+        {
+            if (useHash) {
+                try {
+                    bundleName = unhashedToHashedBundleNameMap[bundleName];
+                } catch {
+                    Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
+                }
+            }
+
+            DownloadInProgressContainer inProgress;
+            if (downloadsInProgress.TryGetValue(bundleName, out inProgress)) {
+                inProgress.OnProgress += onProgress;
+            }
+        }
+
         private void GetManifest(string bundleName, Action<AssetBundle> onComplete)
         {
             DownloadInProgressContainer inProgress;
@@ -230,6 +246,7 @@ namespace AssetBundles
 
             var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
             downloadsInProgress.Remove(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY);
+            inProgress.OnProgress = null;
             inProgress.OnComplete(manifestBundle);
 
             // Need to do this after OnComplete, otherwise the bundle will always be null
@@ -314,12 +331,16 @@ namespace AssetBundles
                 return;
             }
 
-            downloadsInProgress.Add(bundleName, new DownloadInProgressContainer(onComplete));
+            inProgress = new DownloadInProgressContainer(onComplete);
+            downloadsInProgress.Add(bundleName, inProgress);
 
             var mainBundle = new AssetBundleDownloadCommand {
                 BundleName = bundleName,
                 Hash = downloadSettings == DownloadSettings.UseCacheIfAvailable ? Manifest.GetAssetBundleHash(bundleName) : default(Hash128),
-                OnComplete = bundle => OnDownloadComplete(bundleName, bundle)
+                OnComplete = bundle => OnDownloadComplete(bundleName, bundle),
+                OnProgress = f => {
+                    if (inProgress.OnProgress != null) inProgress.OnProgress(f);
+                }
             };
 
             var dependencies = Manifest.GetDirectDependencies(bundleName);
@@ -513,6 +534,7 @@ namespace AssetBundles
                 Dependencies = Manifest.GetDirectDependencies(bundleName)
             });
 
+            inProgress.OnProgress = null;
             inProgress.OnComplete(bundle);
         }
 
@@ -526,6 +548,7 @@ namespace AssetBundles
         internal class DownloadInProgressContainer
         {
             public int References;
+            public Action<float> OnProgress;
             public Action<AssetBundle> OnComplete;
 
             public DownloadInProgressContainer(Action<AssetBundle> onComplete)
