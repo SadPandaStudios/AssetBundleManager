@@ -150,13 +150,7 @@ namespace AssetBundles
 
         public void RegisterDownloadProgressHandler(string bundleName, Action<float> onProgress)
         {
-            if (useHash) {
-                try {
-                    bundleName = unhashedToHashedBundleNameMap[bundleName];
-                } catch {
-                    Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
-                }
-            }
+            if (useHash) bundleName = GetHashedBundleName(bundleName);
 
             DownloadInProgressContainer inProgress;
             if (downloadsInProgress.TryGetValue(bundleName, out inProgress)) {
@@ -307,13 +301,7 @@ namespace AssetBundles
                 return;
             }
 
-            if (useHash) {
-                try {
-                    bundleName = unhashedToHashedBundleNameMap[bundleName];
-                } catch {
-                    Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
-                }
-            }
+            if (useHash) bundleName = GetHashedBundleName(bundleName);
 
             AssetBundleContainer active;
 
@@ -450,6 +438,28 @@ namespace AssetBundles
             }
 
             return new AssetBundleAsync(bundleName, GetBundle);
+        }
+
+
+        /// <summary>
+        ///     Returns the bundle name with the bundle hash appended to it.  Needed if you have hash naming enabled via
+        ///     <code>AppendHashToBundleNames(true)</code>
+        /// </summary>
+        public string GetHashedBundleName(string bundleName)
+        {
+            try {
+                bundleName = unhashedToHashedBundleNameMap[bundleName];
+            } catch {
+                Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
+            }
+
+            return bundleName;
+        }
+
+        public bool IsVersionCached(string bundleName)
+        {
+            if (useHash) bundleName = GetHashedBundleName(bundleName);
+            return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
         }
 
         /// <summary>
