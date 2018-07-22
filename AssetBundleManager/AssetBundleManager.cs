@@ -42,7 +42,7 @@ namespace AssetBundles
         private const string MANIFEST_DOWNLOAD_IN_PROGRESS_KEY = "__manifest__";
         private const string MANIFEST_PLAYERPREFS_KEY = "__abm_manifest_version__";
 
-        private string baseUri;
+        private string[] baseUri;
         private bool useHash;
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
@@ -55,22 +55,30 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager SetBaseUri(string uri)
         {
-            if (uri == baseUri) return this;
+            return SetBaseUri(new[] { uri });
+        }
 
-            if (string.IsNullOrEmpty(baseUri)) {
-                Debug.LogFormat("Setting base uri to [{0}].", uri);
+        public AssetBundleManager SetBaseUri(string[] uris)
+        {
+            if (baseUri == null || baseUri.Length == 0) {
+                Debug.LogFormat("Setting base uri to [{0}].", string.Join(",", uris));
             } else {
-                Debug.LogWarningFormat("Overriding base uri from [{0}] to [{1}].", baseUri, uri);
+                Debug.LogWarningFormat("Overriding base uri from [{0}] to [{1}].", string.Join(",", baseUri), string.Join(",", uris));
             }
 
-            var builder = new StringBuilder(uri);
+            baseUri = new string[uris.Length];
 
-            if (!uri.EndsWith("/")) {
-                builder.Append("/");
+            for (int i = 0; i < uris.Length; i++) {
+                var builder = new StringBuilder(uris[i]);
+
+                if (!uris[i].EndsWith("/")) {
+                    builder.Append("/");
+                }
+
+                builder.Append(Utility.GetPlatformName()).Append("/");
+                baseUri[i] = builder.ToString();
             }
 
-            builder.Append(Utility.GetPlatformName()).Append("/");
-            baseUri = builder.ToString();
             return this;
         }
 
@@ -81,7 +89,7 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager UseSimulatedUri()
         {
-            SetBaseUri(string.Format("file://{0}/../AssetBundles/", Application.dataPath));
+            SetBaseUri(new[] { string.Format("file://{0}/../AssetBundles/", Application.dataPath) });
             return this;
         }
 
@@ -90,7 +98,7 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager UseStreamingAssetsFolder()
         {
-            SetBaseUri(Application.streamingAssetsPath);
+            SetBaseUri(new[] { Application.streamingAssetsPath });
             return this;
         }
 
@@ -125,7 +133,7 @@ namespace AssetBundles
         /// <param name="onComplete">Called when initialization is complete.</param>
         public void Initialize(Action<bool> onComplete)
         {
-            if (string.IsNullOrEmpty(baseUri)) {
+            if (baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return;
             }
@@ -139,7 +147,7 @@ namespace AssetBundles
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
         public AssetBundleManifestAsync InitializeAsync()
         {
-            if (string.IsNullOrEmpty(baseUri)) {
+            if (baseUri == null || baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return null;
             }
@@ -158,13 +166,6 @@ namespace AssetBundles
             }
 
             downloadsInProgress.Add(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, new DownloadInProgressContainer(onComplete));
-
-#if !UNITY_EDITOR && !UNITY_WEBGL
-            handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
-#else
-            handler = new AssetBundleDownloader(baseUri);
-#endif
-
             PrimaryManifest = PrimaryManifestType.Remote;
 
             // The first attempt for the manifest should always be uncached.  The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
@@ -172,25 +173,29 @@ namespace AssetBundles
             while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion)))
                 manifestVersion++;
 
-            GetManifestInternal(bundleName, manifestVersion, 1);
+            GetManifestInternal(bundleName, manifestVersion, 0);
         }
 
-        private void GetManifestInternal(string bundleName, uint version, int attemptCount)
+        private void GetManifestInternal(string bundleName, uint version, int uriIndex)
         {
-            handler = new AssetBundleDownloader(baseUri);
+            handler = new AssetBundleDownloader(baseUri[uriIndex]);
 
             if (Application.isEditor == false) {
-                handler = new StreamingAssetsBundleDownloadDecorator(handler, this.defaultPrioritizationStrategy);
+                handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
             }
 
             handler.Handle(new AssetBundleDownloadCommand {
                 BundleName = bundleName,
                 Version = version,
                 OnComplete = manifest => {
-                    if (manifest == null && attemptCount == 1 && version > 1) {
+                    var maxIndex = baseUri.Length - 1;
+                    if (manifest == null && uriIndex < maxIndex && version > 1) {
+                        Debug.LogFormat("Unable to download manifest from [{0}], attempting [{1}]", baseUri[uriIndex], baseUri[uriIndex + 1]);
+                        GetManifestInternal(bundleName, version, uriIndex + 1);
+                    } else if (manifest == null && uriIndex >= maxIndex && version > 1 && PrimaryManifest != PrimaryManifestType.RemoteCached) {
                         PrimaryManifest = PrimaryManifestType.RemoteCached;
-                        Debug.Log("Unable to download manifest, attempting to use one previously downloaded.");
-                        GetManifestInternal(bundleName, version - 1, attemptCount + 1);
+                        Debug.LogFormat("Unable to download manifest, attempting to use one previously downloaded (version [{0}]).", version);
+                        GetManifestInternal(bundleName, version - 1, uriIndex);
                     } else {
                         OnInitializationComplete(manifest, bundleName, version);
                     }
@@ -405,7 +410,6 @@ namespace AssetBundles
                 throw;
             }
         }
-
 #endif
 
         /// <summary>
@@ -443,7 +447,9 @@ namespace AssetBundles
 
         public bool IsVersionCached(string bundleName)
         {
+            if (Manifest == null) return false;
             if (useHash) bundleName = GetHashedBundleName(bundleName);
+            if (string.IsNullOrEmpty(bundleName)) return false;
             return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
         }
 
