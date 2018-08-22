@@ -140,13 +140,17 @@ namespace AssetBundles
             }
 
             if (!isNetworkError && !isHttpError && string.IsNullOrEmpty(req.error) && bundle == null) {
-                Debug.LogWarning(string.Format("There was no error downloading [{0}] but the bundle is null.  Assuming there's something wrong with the cache folder, retrying with cache disabled now and for future requests...", uri));
-                cachingDisabled = true;
-                req.Dispose();
-                activeDownloads--;
-                yield return new WaitForSeconds(RETRY_WAIT_PERIOD);
-                InternalHandle(Download(cmd, retryCount + 1));
-                yield break;
+                if (cachingDisabled) {
+                    Debug.LogWarning(string.Format("There was no error downloading [{0}] but the bundle is null.  Caching has already been disabled, not sure there's anything else that can be done.  Returning...", uri));
+                } else {
+                    Debug.LogWarning(string.Format("There was no error downloading [{0}] but the bundle is null.  Assuming there's something wrong with the cache folder, retrying with cache disabled now and for future requests...", uri));
+                    cachingDisabled = true;
+                    req.Dispose();
+                    activeDownloads--;
+                    yield return new WaitForSeconds(RETRY_WAIT_PERIOD);
+                    InternalHandle(Download(cmd, retryCount + 1));
+                    yield break;
+                }
             }
 
             try {

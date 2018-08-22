@@ -529,11 +529,16 @@ namespace AssetBundles
             var inProgress = downloadsInProgress[bundleName];
             downloadsInProgress.Remove(bundleName);
 
-            activeBundles.Add(bundleName, new AssetBundleContainer {
-                AssetBundle = bundle,
-                References = inProgress.References,
-                Dependencies = Manifest.GetDirectDependencies(bundleName)
-            });
+            try {
+                activeBundles.Add(bundleName, new AssetBundleContainer {
+                    AssetBundle = bundle,
+                    References = inProgress.References,
+                    Dependencies = Manifest.GetDirectDependencies(bundleName)
+                });
+            } catch (ArgumentException) {
+                Debug.LogWarning("Attempted to activate a bundle that was already active.  Not sure how this happened, attempting to fail gracefully.");
+                activeBundles[bundleName].References++;
+            }
 
             inProgress.OnComplete(bundle);
         }
