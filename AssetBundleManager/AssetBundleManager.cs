@@ -62,6 +62,10 @@ namespace AssetBundles
             return SetBaseUri(new[] { uri });
         }
 
+        /// <summary>
+        ///     Sets the base uri used for AssetBundle calls.
+        /// </summary>
+        /// <param name="uris">List of uris to use.  In order of priority (highest to lowest).</param>
         public AssetBundleManager SetBaseUri(string[] uris)
         {
             if (baseUri == null || baseUri.Length == 0) {
@@ -133,23 +137,53 @@ namespace AssetBundles
 
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        ///     Uses the platform name as the manifest name.  This is the default behaviour when
+        ///     using Unity's AssetBundleBrowser to create your bundles.
         /// </summary>
         /// <param name="onComplete">Called when initialization is complete.</param>
         public void Initialize(Action<bool> onComplete)
+        {
+            Initialize(Utility.GetPlatformName(), true, onComplete);
+        }
+
+        /// <summary>
+        ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        /// </summary>
+        /// <param name="manifestName">The name of the manifest file to download.</param>
+        /// <param name="getFreshManifest">
+        ///     Always try to download a new manifest even if one has already been cached.
+        /// </param>
+        /// <param name="onComplete">Called when initialization is complete.</param>
+        public void Initialize(string manifestName, bool getFreshManifest, Action<bool> onComplete)
         {
             if (baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return;
             }
 
-            GetManifest(Utility.GetPlatformName(), bundle => onComplete(bundle != null));
+            GetManifest(manifestName, getFreshManifest, bundle => onComplete(bundle != null));
+        }
+
+        /// <summary>
+        ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        ///     Uses the platform name as the manifest name.  This is the default behaviour when
+        ///     using Unity's AssetBundleBrowser to create your bundles.
+        /// </summary>
+        /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
+        public AssetBundleManifestAsync InitializeAsync()
+        {
+            return InitializeAsync(Utility.GetPlatformName(), true);
         }
 
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         /// </summary>
+        /// <param name="manifestName">The name of the manifest file to download.</param>
+        /// <param name="getFreshManifest">
+        ///     Always try to download a new manifest even if one has already been cached.
+        /// </param>
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
-        public AssetBundleManifestAsync InitializeAsync()
+        public AssetBundleManifestAsync InitializeAsync(string manifestName, bool getFreshManifest)
         {
             if (baseUri == null || baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
@@ -157,10 +191,10 @@ namespace AssetBundles
             }
 
             // Wrap the GetManifest with an async operation.
-            return new AssetBundleManifestAsync(Utility.GetPlatformName(), GetManifest);
+            return new AssetBundleManifestAsync(manifestName, getFreshManifest, GetManifest);
         }
 
-        private void GetManifest(string bundleName, Action<AssetBundle> onComplete)
+        private void GetManifest(string bundleName, bool getFreshManifest, Action<AssetBundle> onComplete)
         {
             DownloadInProgressContainer inProgress;
             if (downloadsInProgress.TryGetValue(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, out inProgress)) {
@@ -172,10 +206,17 @@ namespace AssetBundles
             downloadsInProgress.Add(MANIFEST_DOWNLOAD_IN_PROGRESS_KEY, new DownloadInProgressContainer(onComplete));
             PrimaryManifest = PrimaryManifestType.Remote;
 
-            // The first attempt for the manifest should always be uncached.  The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
-            var manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
-            while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion)))
-                manifestVersion++;
+            uint manifestVersion = 1;
+
+            if (getFreshManifest) {
+                // Find the first cached version and then get the "next" one.
+                manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
+
+                // The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
+                while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion))) {
+                    manifestVersion++;
+                }
+            }
 
             GetManifestInternal(bundleName, manifestVersion, 0);
         }
@@ -234,7 +275,10 @@ namespace AssetBundles
                 PrimaryManifest = PrimaryManifestType.None;
             } else {
                 Initialized = true;
-                GenerateUnhashToHashMap(Manifest);
+
+                if (useHash) {
+                    GenerateUnhashToHashMap(Manifest);
+                }
             }
 
             var inProgress = downloadsInProgress[MANIFEST_DOWNLOAD_IN_PROGRESS_KEY];
@@ -353,12 +397,27 @@ namespace AssetBundles
 #if AWAIT_SUPPORTED
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        ///     Uses the platform name as the manifest name.  This is the default behaviour when
+        ///     using Unity's AssetBundleBrowser to create your bundles.
         /// </summary>
         public async Task<bool> Initialize()
         {
+            return await Initialize(Utility.GetPlatformName(), true);
+        }
+
+        /// <summary>
+        ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
+        /// </summary>
+        /// <param name="manifestName">Name of the manifest to download. </param>
+        /// <param name="getFreshManifest">
+        ///     Always try to download a new manifest even if one has already been cached.
+        /// </param>
+
+        public async Task<bool> Initialize(string manifestName, bool getFreshManifest)
+        {
             var completionSource = new TaskCompletionSource<bool>();
             var onComplete = new Action<bool>(b => completionSource.SetResult(b));
-            Initialize(onComplete);
+            Initialize(manifestName, getFreshManifest, onComplete);
             return await completionSource.Task;
         }
 
