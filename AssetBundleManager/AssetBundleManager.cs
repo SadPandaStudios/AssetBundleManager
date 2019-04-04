@@ -246,14 +246,12 @@ namespace AssetBundles
         private void GenerateUnhashToHashMap(AssetBundleManifest manifest)
         {
             unhashedToHashedBundleNameMap.Clear();
-
-            var splitChar = new[] { '_' };
             var allBundles = manifest.GetAllAssetBundles();
 
             for (int i = 0; i < allBundles.Length; i++) {
-                var split = allBundles[i].Split(splitChar, 2);
-                if (split.Length != 2) continue;
-                unhashedToHashedBundleNameMap[split[0]] = allBundles[i];
+                var indexOfHashSplit = allBundles[i].LastIndexOf('_');
+                if (indexOfHashSplit < 0) continue;
+                unhashedToHashedBundleNameMap[allBundles[i].Substring(0, indexOfHashSplit)] = allBundles[i];
             }
         }
 
