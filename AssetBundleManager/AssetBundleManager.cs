@@ -1,9 +1,13 @@
-﻿using System;
+﻿#if NET_4_6 || NET_STANDARD_2_0
+#define AWAIT_SUPPORTED
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-#if NET_4_6
+#if AWAIT_SUPPORTED
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 #endif
@@ -346,7 +350,7 @@ namespace AssetBundles
             }
         }
 
-#if NET_4_6
+#if AWAIT_SUPPORTED
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         /// </summary>
