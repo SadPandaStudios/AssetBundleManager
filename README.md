@@ -9,6 +9,18 @@ We felt the AssetBundleManager provided by Unity was complicated and out-dated..
 ## Requirements
  - Unity 2017.1 or greater.
 
+## Installation
+
+- Open file `manifest.json` in `your_repo/Packages`,
+- Under `dependencies` add following line:
+
+```json
+"asset-bundle-manager": "https://github.com/SadPandaStudios/AssetBundleManager.git#upm",
+```
+
+- Refresh your project in Unity,
+- Don't forget to add this assembly `AssetBundleManager` to `Assembly Definition References` if you want to use this tool from your assembly.
+
 
 ## Recommendations
 This module pairs well with Unity's [Asset Bundle Browser](https://github.com/Unity-Technologies/AssetBundles-Browser) (ABB) tool.

@@ -1,0 +1,12 @@
+{
+    "name": "asset-bundle-manager",
+    "displayName": "Asset Bundle Manager",
+    "version": "0.1.2",
+    "unity": "2019.1",
+    "description": "Yet another asset bundle manager for Unity",
+    "keywords": [
+        "unity",
+		"bundle"		
+    ],
+    "category": "Instrument"
+}

@@ -1,0 +1,30 @@
+language: generic
+
+env:
+  - MASTER_TARGET_BRANCH=upm DEVELOP_TARGET_BRANCH=upm-dev TEST_TARGET_BRANCH=upm-test TARGET_BRANCH=not_defined TEST_RUN=false FOLDER_TO_EXPORT=Assets
+
+sudo: required
+
+before_install:
+  - |
+      if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+        TARGET_BRANCH=$TEST_TARGET_BRANCH
+      elif [ "$TRAVIS_BRANCH" = "develop" ]; then
+        TARGET_BRANCH=$DEVELOP_TARGET_BRANCH
+      elif [ "$TRAVIS_BRANCH" = "master" ]; then
+        TARGET_BRANCH=$MASTER_TARGET_BRANCH
+      else
+        TARGET_BRANCH=$TEST_TARGET_BRANCH
+      fi
+
+after_success:
+  - chmod 777 -R Ci
+  - Ci/move_to_packagebranch.sh
+
+branches:
+  only:
+    - master
+    - develop
+    - /^(?i:test).*$/
+  except:
+    - /^(?i:upm).*$/
