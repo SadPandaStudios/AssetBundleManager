@@ -54,10 +54,10 @@ namespace AssetBundles
         public bool Success { get; private set; }
         public bool IsDone { get; private set; }
 
-        public AssetBundleManifestAsync(string bundleName, Action<string, Action<AssetBundle>> callToAction)
+        public AssetBundleManifestAsync(string bundleName, bool getFreshManifest, Action<string, bool, Action<AssetBundle>> callToAction)
         {
             IsDone = false;
-            callToAction(bundleName, OnAssetBundleManifestComplete);
+            callToAction(bundleName, getFreshManifest, OnAssetBundleManifestComplete);
         }
 
         private void OnAssetBundleManifestComplete(AssetBundle bundle)
