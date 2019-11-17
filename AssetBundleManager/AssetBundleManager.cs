@@ -106,7 +106,12 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager UseStreamingAssetsFolder()
         {
-            SetBaseUri(new[] { Application.streamingAssetsPath });
+#if UNITY_ANDROID
+            var url = Application.streamingAssetsPath;
+#else
+            var url = "file:///" + Application.streamingAssetsPath;
+#endif
+            SetBaseUri(new[] { url });
             return this;
         }
 
