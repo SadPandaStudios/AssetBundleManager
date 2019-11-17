@@ -12,20 +12,25 @@ namespace AssetBundles
     {
         private string fullBundlePath;
         private ICommandHandler<AssetBundleDownloadCommand> decorated;
+        private string remoteManifestName;
 
         private AssetBundleManifest manifest;
         private AssetBundleManager.PrioritizationStrategy currentStrategy;
         private Action<IEnumerator> coroutineHandler;
         private string currentPlatform;
 
+        /// <param name="remoteManifestName">
+        ///     Filename for the remote manifest, so this decorator knows it should be ignored.
+        /// </param>
         /// <param name="decorated">CommandHandler to use when the bundle is not available in StreamingAssets</param>
         /// <param name="strategy">
         ///     Strategy to use.  Defaults to having remote bundle override StreamingAssets bundle if the hashes
         ///     are different
         /// </param>
-        public StreamingAssetsBundleDownloadDecorator(ICommandHandler<AssetBundleDownloadCommand> decorated, AssetBundleManager.PrioritizationStrategy strategy)
+        public StreamingAssetsBundleDownloadDecorator(string remoteManifestName, ICommandHandler<AssetBundleDownloadCommand> decorated, AssetBundleManager.PrioritizationStrategy strategy)
         {
             this.decorated = decorated;
+            this.remoteManifestName = remoteManifestName;
             currentStrategy = strategy;
             currentPlatform = Utility.GetPlatformName();
 
@@ -82,6 +87,35 @@ namespace AssetBundles
             }
 
             decorated.Handle(cmd);
+        }
+
+
+        private bool BundleAvailableInStreamingAssets(string bundleName, Hash128 hash)
+        {
+            // Rules for when a bundle should be retrieved from StreamingAssets
+            //  #) There IS a manifest in the StreamingAssets folder
+            //  #) We ARE NOT trying to retrieve the remote manifest
+            //  #) The file exists in the StreamingAssets folder
+            //  #) One of:
+            //       - We ARE prioritizing StreamingAssets bundles over remote bundles
+            //       - The hash for the bundle in StreamingAssets matches the requested hash
+
+            if (manifest == null) {
+                Debug.Log("StreamingAssets manifest is null, using standard download.");
+                return false;
+            }
+
+            if (bundleName == remoteManifestName) {
+                Debug.Log("Attempting to download manifest file, using standard download.");
+                return false;
+            }
+
+            if (manifest.GetAssetBundleHash(bundleName) != hash && currentStrategy != AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets) {
+                Debug.LogFormat("Hash for [{0}] does not match the one in StreamingAssets, using standard download.", bundleName);
+                return false;
+            }
+
+            return true;
         }
     }
 }
