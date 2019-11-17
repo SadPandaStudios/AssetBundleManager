@@ -6,10 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-
 #if AWAIT_SUPPORTED
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
+
 #endif
 
 namespace AssetBundles
@@ -48,17 +48,27 @@ namespace AssetBundles
 
         private string[] baseUri;
         private bool useHash;
+        private string platformName;
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
         private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, string> unhashedToHashedBundleNameMap = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
 
+        public AssetBundleManager()
+        {
+            platformName = Utility.GetPlatformName();
+        }
+
         /// <summary>
         ///     Sets the base uri used for AssetBundle calls.
         /// </summary>
         public AssetBundleManager SetBaseUri(string uri)
         {
+            if (uri == null) {
+                uri = "";
+            }
+
             return SetBaseUri(new[] { uri });
         }
 
@@ -83,7 +93,7 @@ namespace AssetBundles
                     builder.Append("/");
                 }
 
-                builder.Append(Utility.GetPlatformName()).Append("/");
+                builder.Append(platformName).Append("/");
                 baseUri[i] = builder.ToString();
             }
 
@@ -97,7 +107,7 @@ namespace AssetBundles
         /// </summary>
         public AssetBundleManager UseSimulatedUri()
         {
-            SetBaseUri(new[] { string.Format("file://{0}/../AssetBundles/", Application.dataPath) });
+            SetBaseUri(new[] { "file://" + Application.dataPath + "/../AssetBundles/" });
             return this;
         }
 
@@ -141,6 +151,20 @@ namespace AssetBundles
         }
 
         /// <summary>
+        ///     Tell ABM to lower-case the platform name used for various paths and filenames.
+        /// </summary>
+        public AssetBundleManager UseLowerCasePlatformName(bool useLowerCase)
+        {
+            if (baseUri != null) {
+                Debug.LogWarning("UseLowerCasePlatformName: Base URI previously set. The platform is used in the uris, you will need to call SetBaseUri again.");
+                baseUri = null;
+            }
+
+            platformName = useLowerCase ? platformName.ToLower() : Utility.GetPlatformName();
+            return this;
+        }
+
+        /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         ///     Uses the platform name as the manifest name.  This is the default behaviour when
         ///     using Unity's AssetBundleBrowser to create your bundles.
@@ -148,7 +172,7 @@ namespace AssetBundles
         /// <param name="onComplete">Called when initialization is complete.</param>
         public void Initialize(Action<bool> onComplete)
         {
-            Initialize(Utility.GetPlatformName(), true, onComplete);
+            Initialize(platformName, true, onComplete);
         }
 
         /// <summary>
@@ -161,7 +185,7 @@ namespace AssetBundles
         /// <param name="onComplete">Called when initialization is complete.</param>
         public void Initialize(string manifestName, bool getFreshManifest, Action<bool> onComplete)
         {
-            if (baseUri.Length == 0) {
+            if (baseUri == null || baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return;
             }
@@ -177,7 +201,7 @@ namespace AssetBundles
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
         public AssetBundleManifestAsync InitializeAsync()
         {
-            return InitializeAsync(Utility.GetPlatformName(), true);
+            return InitializeAsync(platformName, true);
         }
 
         /// <summary>
@@ -226,28 +250,28 @@ namespace AssetBundles
             GetManifestInternal(bundleName, manifestVersion, 0);
         }
 
-        private void GetManifestInternal(string bundleName, uint version, int uriIndex)
+        private void GetManifestInternal(string manifestName, uint version, int uriIndex)
         {
             handler = new AssetBundleDownloader(baseUri[uriIndex]);
 
             if (Application.isEditor == false) {
-                handler = new StreamingAssetsBundleDownloadDecorator(handler, defaultPrioritizationStrategy);
+                handler = new StreamingAssetsBundleDownloadDecorator(manifestName, platformName, handler, defaultPrioritizationStrategy);
             }
 
             handler.Handle(new AssetBundleDownloadCommand {
-                BundleName = bundleName,
+                BundleName = manifestName,
                 Version = version,
                 OnComplete = manifest => {
                     var maxIndex = baseUri.Length - 1;
                     if (manifest == null && uriIndex < maxIndex && version > 1) {
                         Debug.LogFormat("Unable to download manifest from [{0}], attempting [{1}]", baseUri[uriIndex], baseUri[uriIndex + 1]);
-                        GetManifestInternal(bundleName, version, uriIndex + 1);
+                        GetManifestInternal(manifestName, version, uriIndex + 1);
                     } else if (manifest == null && uriIndex >= maxIndex && version > 1 && PrimaryManifest != PrimaryManifestType.RemoteCached) {
                         PrimaryManifest = PrimaryManifestType.RemoteCached;
                         Debug.LogFormat("Unable to download manifest, attempting to use one previously downloaded (version [{0}]).", version);
-                        GetManifestInternal(bundleName, version - 1, uriIndex);
+                        GetManifestInternal(manifestName, version - 1, uriIndex);
                     } else {
-                        OnInitializationComplete(manifest, bundleName, version);
+                        OnInitializationComplete(manifest, manifestName, version);
                     }
                 }
             });
@@ -407,7 +431,7 @@ namespace AssetBundles
         /// </summary>
         public async Task<bool> Initialize()
         {
-            return await Initialize(Utility.GetPlatformName(), true);
+            return await Initialize(platformName, true);
         }
 
         /// <summary>
@@ -417,7 +441,6 @@ namespace AssetBundles
         /// <param name="getFreshManifest">
         ///     Always try to download a new manifest even if one has already been cached.
         /// </param>
-
         public async Task<bool> Initialize(string manifestName, bool getFreshManifest)
         {
             var completionSource = new TaskCompletionSource<bool>();
@@ -511,6 +534,9 @@ namespace AssetBundles
             return bundleName;
         }
 
+        /// <summary>
+        ///     Check to see if a specific asset bundle is cached or needs to be downloaded.
+        /// </summary>
         public bool IsVersionCached(string bundleName)
         {
             if (Manifest == null) return false;

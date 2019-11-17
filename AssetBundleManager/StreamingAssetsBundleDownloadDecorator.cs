@@ -22,17 +22,18 @@ namespace AssetBundles
         /// <param name="remoteManifestName">
         ///     Filename for the remote manifest, so this decorator knows it should be ignored.
         /// </param>
+        /// <param name="platformName">Name of the platform to use</param>
         /// <param name="decorated">CommandHandler to use when the bundle is not available in StreamingAssets</param>
         /// <param name="strategy">
         ///     Strategy to use.  Defaults to having remote bundle override StreamingAssets bundle if the hashes
         ///     are different
         /// </param>
-        public StreamingAssetsBundleDownloadDecorator(string remoteManifestName, ICommandHandler<AssetBundleDownloadCommand> decorated, AssetBundleManager.PrioritizationStrategy strategy)
+        public StreamingAssetsBundleDownloadDecorator(string remoteManifestName, string platformName, ICommandHandler<AssetBundleDownloadCommand> decorated, AssetBundleManager.PrioritizationStrategy strategy)
         {
             this.decorated = decorated;
             this.remoteManifestName = remoteManifestName;
             currentStrategy = strategy;
-            currentPlatform = Utility.GetPlatformName();
+            currentPlatform = platformName;
 
 #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -41,11 +42,12 @@ namespace AssetBundles
 #endif
                 coroutineHandler = AssetBundleDownloaderMonobehaviour.Instance.HandleCoroutine;
 
-            fullBundlePath = string.Format("{0}/{1}", Application.streamingAssetsPath, Utility.GetPlatformName());
-            var manifestBundle = AssetBundle.LoadFromFile(string.Format("{0}/{1}", fullBundlePath, currentPlatform));
+            fullBundlePath = Application.streamingAssetsPath + "/" + currentPlatform;
+            var fullManifestPath = fullBundlePath + "/" + currentPlatform;
+            var manifestBundle = AssetBundle.LoadFromFile(fullManifestPath);
 
             if (manifestBundle == null) {
-                Debug.LogWarning("Unable to retrieve manifest file from StreamingAssets, disabling StreamingAssetsBundleDownloadDecorator.");
+                Debug.LogWarningFormat("Unable to retrieve manifest file [{0}] from StreamingAssets, disabling StreamingAssetsBundleDownloadDecorator.", fullManifestPath);
             } else {
                 manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 manifestBundle.Unload(false);
@@ -71,9 +73,9 @@ namespace AssetBundles
         private IEnumerator InternalHandle(AssetBundleDownloadCommand cmd)
         {
             // Never use StreamingAssets for the manifest bundle, always try to use it for bundles with a matching hash (Unless the strategy says otherwise)
-            if (manifest != null && cmd.BundleName != currentPlatform && (currentStrategy == AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets || manifest.GetAssetBundleHash(cmd.BundleName) == cmd.Hash)) {
-                Debug.Log(string.Format("Using StreamingAssets for bundle [{0}]", cmd.BundleName));
-                var request = AssetBundle.LoadFromFileAsync(string.Format("{0}/{1}", fullBundlePath, cmd.BundleName));
+            if (BundleAvailableInStreamingAssets(cmd.BundleName, cmd.Hash)) {
+                Debug.LogFormat("Using StreamingAssets for bundle [{0}]", cmd.BundleName);
+                var request = AssetBundle.LoadFromFileAsync(fullBundlePath + "/" + cmd.BundleName);
 
                 while (request.isDone == false)
                     yield return null;
@@ -83,7 +85,7 @@ namespace AssetBundles
                     yield break;
                 }
 
-                Debug.LogWarning(string.Format("StreamingAssets download failed for bundle [{0}], switching to standard download.", cmd.BundleName));
+                Debug.LogWarningFormat("StreamingAssets download failed for bundle [{0}], switching to standard download.", cmd.BundleName);
             }
 
             decorated.Handle(cmd);
