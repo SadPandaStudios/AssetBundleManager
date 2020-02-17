@@ -74,7 +74,7 @@ namespace AssetBundles
         {
             // Never use StreamingAssets for the manifest bundle, always try to use it for bundles with a matching hash (Unless the strategy says otherwise)
             if (BundleAvailableInStreamingAssets(cmd.BundleName, cmd.Hash)) {
-                Debug.LogFormat("Using StreamingAssets for bundle [{0}]", cmd.BundleName);
+                if (AssetBundleManager.debugLoggingEnabled) Debug.LogFormat("Using StreamingAssets for bundle [{0}]", cmd.BundleName);
                 var request = AssetBundle.LoadFromFileAsync(fullBundlePath + "/" + cmd.BundleName);
 
                 while (request.isDone == false)
@@ -103,17 +103,17 @@ namespace AssetBundles
             //       - The hash for the bundle in StreamingAssets matches the requested hash
 
             if (manifest == null) {
-                Debug.Log("StreamingAssets manifest is null, using standard download.");
+                if (AssetBundleManager.debugLoggingEnabled) Debug.Log("StreamingAssets manifest is null, using standard download.");
                 return false;
             }
 
             if (bundleName == remoteManifestName) {
-                Debug.Log("Attempting to download manifest file, using standard download.");
+                if (AssetBundleManager.debugLoggingEnabled) Debug.Log("Attempting to download manifest file, using standard download.");
                 return false;
             }
 
             if (manifest.GetAssetBundleHash(bundleName) != hash && currentStrategy != AssetBundleManager.PrioritizationStrategy.PrioritizeStreamingAssets) {
-                Debug.LogFormat("Hash for [{0}] does not match the one in StreamingAssets, using standard download.", bundleName);
+                if (AssetBundleManager.debugLoggingEnabled) Debug.LogFormat("Hash for [{0}] does not match the one in StreamingAssets, using standard download.", bundleName);
                 return false;
             }
 

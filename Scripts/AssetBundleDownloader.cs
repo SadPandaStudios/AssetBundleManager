@@ -77,21 +77,21 @@ namespace AssetBundles
             var uri = baseUri + cmd.BundleName;
             UnityWebRequest req;
             if (cachingDisabled || (cmd.Version <= 0 && cmd.Hash == DEFAULT_HASH)) {
-                Debug.Log(string.Format("GetAssetBundle [{0}].", uri));
+                if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}].", uri));
 #if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri);
 #else
                 req = UnityWebRequest.GetAssetBundle(uri);
 #endif
             } else if (cmd.Hash == DEFAULT_HASH) {
-                Debug.Log(string.Format("GetAssetBundle [{0}] v[{1}] [{2}].", Caching.IsVersionCached(uri, new Hash128(0, 0, 0, cmd.Version)) ? "cached" : "uncached", cmd.Version, uri));
+                if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] v[{1}] [{2}].", Caching.IsVersionCached(uri, new Hash128(0, 0, 0, cmd.Version)) ? "cached" : "uncached", cmd.Version, uri));
 #if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Version, 0);
 #else
                 req = UnityWebRequest.GetAssetBundle(uri, cmd.Version, 0);
 #endif
             } else {
-                Debug.Log(string.Format("GetAssetBundle [{0}] [{1}] [{2}].", Caching.IsVersionCached(uri, cmd.Hash) ? "cached" : "uncached", uri, cmd.Hash));
+                if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] [{1}] [{2}].", Caching.IsVersionCached(uri, cmd.Hash) ? "cached" : "uncached", uri, cmd.Hash));
 #if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Hash, 0);
 #else

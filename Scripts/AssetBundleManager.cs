@@ -48,6 +48,7 @@ namespace AssetBundles
 
         private string[] baseUri;
         private bool useHash;
+        internal static bool debugLoggingEnabled = true;
         private string platformName;
         private PrioritizationStrategy defaultPrioritizationStrategy;
         private ICommandHandler<AssetBundleDownloadCommand> handler;
@@ -80,7 +81,7 @@ namespace AssetBundles
         public AssetBundleManager SetBaseUri(string[] uris)
         {
             if (baseUri == null || baseUri.Length == 0) {
-                Debug.LogFormat("Setting base uri to [{0}].", string.Join(",", uris));
+                if (debugLoggingEnabled) Debug.LogFormat("Setting base uri to [{0}].", string.Join(",", uris));
             } else {
                 Debug.LogWarningFormat("Overriding base uri from [{0}] to [{1}].", string.Join(",", baseUri), string.Join(",", uris));
             }
@@ -162,6 +163,12 @@ namespace AssetBundles
             }
 
             platformName = useLowerCase ? platformName.ToLower() : Utility.GetPlatformName();
+            return this;
+        }
+
+        public AssetBundleManager DisableDebugLogging(bool disable = true)
+        {
+            debugLoggingEnabled = !disable;
             return this;
         }
 
@@ -265,11 +272,11 @@ namespace AssetBundles
                 OnComplete = manifest => {
                     var maxIndex = baseUri.Length - 1;
                     if (manifest == null && uriIndex < maxIndex && version > 1) {
-                        Debug.LogFormat("Unable to download manifest from [{0}], attempting [{1}]", baseUri[uriIndex], baseUri[uriIndex + 1]);
+                        if (debugLoggingEnabled) Debug.LogFormat("Unable to download manifest from [{0}], attempting [{1}]", baseUri[uriIndex], baseUri[uriIndex + 1]);
                         GetManifestInternal(manifestName, version, uriIndex + 1);
                     } else if (manifest == null && uriIndex >= maxIndex && version > 1 && PrimaryManifest != PrimaryManifestType.RemoteCached) {
                         PrimaryManifest = PrimaryManifestType.RemoteCached;
-                        Debug.LogFormat("Unable to download manifest, attempting to use one previously downloaded (version [{0}]).", version);
+                        if (debugLoggingEnabled) Debug.LogFormat("Unable to download manifest, attempting to use one previously downloaded (version [{0}]).", version);
                         GetManifestInternal(manifestName, version - 1, uriIndex);
                     } else {
                         OnInitializationComplete(manifest, manifestName, version);
