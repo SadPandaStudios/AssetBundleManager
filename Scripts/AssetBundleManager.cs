@@ -54,6 +54,7 @@ namespace AssetBundles
         private IDictionary<string, AssetBundleContainer> activeBundles = new Dictionary<string, AssetBundleContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, DownloadInProgressContainer> downloadsInProgress = new Dictionary<string, DownloadInProgressContainer>(StringComparer.OrdinalIgnoreCase);
         private IDictionary<string, string> unhashedToHashedBundleNameMap = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, string> hashedToUnhashedBundleNameMap = new Dictionary<string, string>(10, StringComparer.OrdinalIgnoreCase);
 
         public AssetBundleManager()
         {
@@ -143,7 +144,7 @@ namespace AssetBundles
         public AssetBundleManager AppendHashToBundleNames(bool appendHash = true)
         {
             if (appendHash && Initialized) {
-                GenerateUnhashToHashMap(Manifest);
+                GenerateNameHashMaps(Manifest);
             }
 
             useHash = appendHash;
@@ -306,7 +307,7 @@ namespace AssetBundles
                 Initialized = true;
 
                 if (useHash) {
-                    GenerateUnhashToHashMap(Manifest);
+                    GenerateNameHashMaps(Manifest);
                 }
             }
 
@@ -320,15 +321,19 @@ namespace AssetBundles
             }
         }
 
-        private void GenerateUnhashToHashMap(AssetBundleManifest manifest)
+        private void GenerateNameHashMaps(AssetBundleManifest manifest)
         {
             unhashedToHashedBundleNameMap.Clear();
+            hashedToUnhashedBundleNameMap.Clear();
             var allBundles = manifest.GetAllAssetBundles();
 
             for (int i = 0; i < allBundles.Length; i++) {
-                var indexOfHashSplit = allBundles[i].LastIndexOf('_');
+                var bundle = allBundles[i];
+                var indexOfHashSplit = bundle.LastIndexOf('_');
                 if (indexOfHashSplit < 0) continue;
-                unhashedToHashedBundleNameMap[allBundles[i].Substring(0, indexOfHashSplit)] = allBundles[i];
+                var splitName = bundle.Substring(0, indexOfHashSplit);
+                unhashedToHashedBundleNameMap[splitName] = bundle;
+                hashedToUnhashedBundleNameMap[bundle] = splitName;
             }
         }
 
@@ -416,6 +421,7 @@ namespace AssetBundles
 
                 for (int i = 0; i < dependenciesToDownload.Count; i++) {
                     var dependencyName = dependenciesToDownload[i];
+                    if (useHash) dependencyName = hashedToUnhashedBundleNameMap[dependencyName];
                     GetBundle(dependencyName, onDependenciesComplete);
                 }
             } else {
@@ -525,12 +531,26 @@ namespace AssetBundles
         /// </summary>
         public string GetHashedBundleName(string bundleName)
         {
-            try {
-                bundleName = unhashedToHashedBundleNameMap[bundleName];
-            } catch {
-                Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
+            string hashedBundleName;
+            if (unhashedToHashedBundleNameMap.TryGetValue(bundleName, out hashedBundleName)) {
+                return hashedBundleName;
             }
 
+            Debug.LogWarningFormat("Unable to find hash for bundle [{0}], this request is likely to fail.", bundleName);
+            return bundleName;
+        }
+
+        /// <summary>
+        ///     Returns the bundle name with the bundle hash removed from it.
+        /// </summary>
+        public string GetUnhashedBundleName(string bundleName)
+        {
+            string unhashedBundleName;
+            if (hashedToUnhashedBundleNameMap.TryGetValue(bundleName, out unhashedBundleName)) {
+                return unhashedBundleName;
+            }
+
+            Debug.LogWarningFormat("Unable to find unhashed name for bundle [{0}], this request is likely to fail.", bundleName);
             return bundleName;
         }
 
@@ -566,7 +586,7 @@ namespace AssetBundles
         public void UnloadBundle(AssetBundle bundle)
         {
             if (bundle == null) return;
-            UnloadBundle(bundle.name, false, false);
+            UnloadBundleInternal(useHash ? GetHashedBundleName(bundle.name) : bundle.name, false, false);
         }
 
         /// <summary>
@@ -575,12 +595,13 @@ namespace AssetBundles
         /// <param name="bundle">Bundle to unload.</param>
         /// <param name="unloadAllLoadedObjects">
         ///     When true, all objects that were loaded from this bundle will be destroyed as
-        ///     well. If there are game objects in your scene referencing those assets, the references to them will become missing.
+        ///     well. If there are game objects in your scene referencing those assets, the references to them will
+        ///     become missing.
         /// </param>
         public void UnloadBundle(AssetBundle bundle, bool unloadAllLoadedObjects)
         {
             if (bundle == null) return;
-            UnloadBundle(bundle.name, unloadAllLoadedObjects, false);
+            UnloadBundleInternal(useHash ? GetHashedBundleName(bundle.name) : bundle.name, unloadAllLoadedObjects, false);
         }
 
         /// <summary>
@@ -589,13 +610,19 @@ namespace AssetBundles
         /// <param name="bundleName">Bundle to unload.</param>
         /// <param name="unloadAllLoadedObjects">
         ///     When true, all objects that were loaded from this bundle will be destroyed as
-        ///     well. If there are game objects in your scene referencing those assets, the references to them will become missing.
+        ///     well. If there are game objects in your scene referencing those assets, the references to them will
+        ///     become missing.
         /// </param>
-        /// <param name="force">Unload the bundle even if we believe there are other dependencies on it.</param>
+        /// <param name="force">Unload the bundle even if ABM believes there are other dependencies on it.</param>
         public void UnloadBundle(string bundleName, bool unloadAllLoadedObjects, bool force)
         {
             if (bundleName == null) return;
+            UnloadBundleInternal(useHash ? GetHashedBundleName(bundleName) : bundleName, unloadAllLoadedObjects, force);
+        }
 
+        /// <summary>Unloads an AssetBundle and its dependencies if there are no more active references.</summary>
+        private void UnloadBundleInternal(string bundleName, bool unloadAllLoadedObjects, bool force)
+        {
             AssetBundleContainer cache;
 
             if (!activeBundles.TryGetValue(bundleName, out cache)) return;
@@ -608,7 +635,7 @@ namespace AssetBundles
                 activeBundles.Remove(bundleName);
 
                 for (int i = 0; i < cache.Dependencies.Length; i++) {
-                    UnloadBundle(cache.Dependencies[i], unloadAllLoadedObjects, force);
+                    UnloadBundleInternal(cache.Dependencies[i], unloadAllLoadedObjects, force);
                 }
             }
         }
