@@ -421,7 +421,7 @@ namespace AssetBundles
 
                 for (int i = 0; i < dependenciesToDownload.Count; i++) {
                     var dependencyName = dependenciesToDownload[i];
-                    if (useHash) dependencyName = hashedToUnhashedBundleNameMap[dependencyName];
+                    if (useHash) dependencyName = GetUnhashedBundleName(dependencyName);
                     GetBundle(dependencyName, onDependenciesComplete);
                 }
             } else {
