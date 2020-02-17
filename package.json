@@ -1,0 +1,17 @@
+{
+    "name": "com.sadpandastudios.asset-bundle-manager",
+    "displayName": "Asset Bundle Manager",
+    "description": "Yet another asset bundle manager for Unity.",
+    "version": "1.1.0",
+    "unity": "2017.1",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/SadPandaStudios/AssetBundleManager"
+    },
+    "author": "Kevin Yockey <foddermk@gmail.com> (https://github.com/mob-sakai)",
+    "contributors": [
+        "giawa (https://github.com/giawa)"
+    ],
+    "dependencies": {}
+  }
