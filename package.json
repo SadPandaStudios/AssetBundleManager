@@ -9,9 +9,11 @@
       "type": "git",
       "url": "https://github.com/SadPandaStudios/AssetBundleManager"
     },
-    "author": "Kevin Yockey <foddermk@gmail.com> (https://github.com/mob-sakai)",
+    "author": "Kevin Yockey <foddermk@gmail.com> (https://github.com/foddermk)",
     "contributors": [
-        "giawa (https://github.com/giawa)"
+        "giawa (https://github.com/giawa)",
+        "danoli3 (https://github.com/danoli3)",
+        "RDeluxe (https://github.com/RDeluxe)"
     ],
     "dependencies": {}
   }
