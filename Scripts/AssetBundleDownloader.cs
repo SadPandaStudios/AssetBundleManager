@@ -117,6 +117,8 @@ namespace AssetBundles
             var isHttpError = (req.responseCode < 200 || req.responseCode > 299) && req.responseCode != 0;  // 0 indicates the cached version may have been downloaded.  If there was an error then req.isError should have a non-0 code.
 #endif
 
+            AssetBundle bundle = null;
+
             if (isHttpError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}] [{2}]", uri, req.responseCode, req.error));
 
@@ -128,15 +130,16 @@ namespace AssetBundles
                     InternalHandle(Download(cmd, retryCount + 1));
                     yield break;
                 }
-            }
-
-            AssetBundle bundle;
-
-            if (isNetworkError) {
+            } else if (isNetworkError) {
                 Debug.LogError(string.Format("Error downloading [{0}]: [{1}]", uri, req.error));
-                bundle = null;
             } else {
-                bundle = DownloadHandlerAssetBundle.GetContent(req);
+                try {
+                    bundle = DownloadHandlerAssetBundle.GetContent(req);
+                } catch (Exception ex) {
+                    // Let the user know there was a problem and continue on with a null bundle.
+                    Debug.LogError("Error processing downloaded bundle, exception follows...");
+                    Debug.LogException(ex);
+                }
             }
 
             if (!isNetworkError && !isHttpError && string.IsNullOrEmpty(req.error) && bundle == null) {
