@@ -46,7 +46,7 @@ If you prefer to use a coroutine instead of a callback for initializing:
 ```csharp
 var abm = new AssetBundleManager();
 // ...
-var initializeAsync = abm.InitializeAsyn();
+var initializeAsync = abm.InitializeAsync();
 yield return initializeAsync;
 if (initializeAsync.Success) {
     // ...
