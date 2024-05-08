@@ -1,4 +1,4 @@
-﻿#if NET_4_6 || NET_STANDARD_2_0
+#if NET_4_6 || NET_STANDARD_2_0
 #define AWAIT_SUPPORTED
 #endif
 
@@ -244,7 +244,7 @@ namespace AssetBundles
             PrimaryManifest = PrimaryManifestType.Remote;
 
             uint manifestVersion = 1;
-
+#if !UNITY_WEBGL
             if (getFreshManifest) {
                 // Find the first cached version and then get the "next" one.
                 manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
@@ -254,6 +254,7 @@ namespace AssetBundles
                     manifestVersion++;
                 }
             }
+#endif
 
             GetManifestInternal(bundleName, manifestVersion, 0);
         }
@@ -303,7 +304,7 @@ namespace AssetBundles
                 Manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
 
-#if UNITY_2017_1_OR_NEWER
+#if UNITY_2017_1_OR_NEWER && !UNITY_WEBGL
                 Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, version));
 #endif
             }
@@ -569,7 +570,11 @@ namespace AssetBundles
             if (Manifest == null) return false;
             if (useHash) bundleName = GetHashedBundleName(bundleName);
             if (string.IsNullOrEmpty(bundleName)) return false;
+#if !UNITY_WEBGL
             return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
+#else
+            return false;
+#endif
         }
 
         /// <summary>
