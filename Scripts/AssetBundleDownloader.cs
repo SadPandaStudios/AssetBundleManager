@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 namespace AssetBundles
 {
@@ -33,6 +34,7 @@ namespace AssetBundles
         private int activeDownloads = 0;
         private Queue<IEnumerator> downloadQueue = new Queue<IEnumerator>();
         private bool cachingDisabled;
+        private RectTransform canvas;
 
         /// <summary>
         ///     Creates a new instance of the AssetBundleDownloader.
@@ -41,6 +43,9 @@ namespace AssetBundles
         public AssetBundleDownloader(string baseUri)
         {
             this.baseUri = baseUri;
+
+            /*this.canvas = GameObject.Find("dlC").GetComponent<RectTransform>(); // This is part of an added feature see line 116's comment for more info
+            canvas.GetComponent<Canvas>().enabled = true;*/
 
 #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -84,14 +89,18 @@ namespace AssetBundles
                 req = UnityWebRequest.GetAssetBundle(uri);
 #endif
             } else if (cmd.Hash == DEFAULT_HASH) {
+#if !UNITY_WEBGL
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] v[{1}] [{2}].", Caching.IsVersionCached(uri, new Hash128(0, 0, 0, cmd.Version)) ? "cached" : "uncached", cmd.Version, uri));
+#endif
 #if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Version, 0);
 #else
                 req = UnityWebRequest.GetAssetBundle(uri, cmd.Version, 0);
 #endif
             } else {
+#if !UNITY_WEBGL
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] [{1}] [{2}].", Caching.IsVersionCached(uri, cmd.Hash) ? "cached" : "uncached", uri, cmd.Hash));
+#endif
 #if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Hash, 0);
 #else
@@ -104,14 +113,20 @@ namespace AssetBundles
 #else
             req.Send();
 #endif
-
-            while (!req.isDone) {
+            /*var ui = GameObject.Instantiate(Resources.Load("dlCContent"), canvas.Find("Scroll View/Viewport/Content")) as GameObject; // This is a working example added to show the user what is being downloaded You need to make a GUI prefab yourself but this code works without issues
+            var uiSlider = ui.GetComponentInChildren<Slider>();
+            var uiText = ui.GetComponentInChildren<Text>();
+            while (!req.isDone)
+            {
+                uiSlider.value = req.downloadProgress;
+                uiText.text = "Getting "+cmd.BundleName;
                 yield return null;
             }
+            GameObject.Destroy(ui); */
 
 #if UNITY_2017_1_OR_NEWER
-            var isNetworkError = req.isNetworkError;
-            var isHttpError = req.isHttpError;
+            var isNetworkError = (req.result == UnityWebRequest.Result.ProtocolError);
+            var isHttpError = (req.result == UnityWebRequest.Result.ProtocolError);
 #else
             var isNetworkError = req.isError;
             var isHttpError = (req.responseCode < 200 || req.responseCode > 299) && req.responseCode != 0;  // 0 indicates the cached version may have been downloaded.  If there was an error then req.isError should have a non-0 code.
