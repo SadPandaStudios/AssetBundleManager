@@ -89,7 +89,7 @@ namespace AssetBundles
                 req = UnityWebRequest.GetAssetBundle(uri);
 #endif
             } else if (cmd.Hash == DEFAULT_HASH) {
-#if !UNITY_WEBGL
+#if (UNITY_2017_1_OR_NEWER && !UNITY_2022_1_OR_NEWER) || (UNITY_2022_1_OR_NEWER && !UNITY_WEBGL)
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] v[{1}] [{2}].", Caching.IsVersionCached(uri, new Hash128(0, 0, 0, cmd.Version)) ? "cached" : "uncached", cmd.Version, uri));
 #endif
 #if UNITY_2018_1_OR_NEWER
@@ -98,7 +98,7 @@ namespace AssetBundles
                 req = UnityWebRequest.GetAssetBundle(uri, cmd.Version, 0);
 #endif
             } else {
-#if !UNITY_WEBGL
+#if (UNITY_2017_1_OR_NEWER && !UNITY_2022_1_OR_NEWER) || (UNITY_2022_1_OR_NEWER && !UNITY_WEBGL)
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] [{1}] [{2}].", Caching.IsVersionCached(uri, cmd.Hash) ? "cached" : "uncached", uri, cmd.Hash));
 #endif
 #if UNITY_2018_1_OR_NEWER
