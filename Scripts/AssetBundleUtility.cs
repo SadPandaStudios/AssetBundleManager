@@ -44,9 +44,11 @@ namespace AssetBundles
 #endif
                 // Add more build targets for your own.
                 // If you add more targets, don't forget to add the same platforms to the function below.
-                //case BuildTarget.StandaloneLinux:
                 case BuildTarget.StandaloneLinux64:
-                //case BuildTarget.StandaloneLinuxUniversal:
+#if !UNITY_2019_1_OR_NEWER
+                case BuildTarget.StandaloneLinuxUniversal:
+		case BuildTarget.StandaloneLinux:
+#endif
                     return "StandaloneLinux";
 #if UNITY_SWITCH
                 case BuildTarget.Switch:
