@@ -7,7 +7,7 @@ We felt the AssetBundleManager provided by Unity was complicated and out-dated..
 
 
 ## Requirements
- - Unity 2017.1 or greater.
+ - Unity 2018.3 or greater.
 
 
 ## Recommendations
@@ -46,7 +46,7 @@ If you prefer to use a coroutine instead of a callback for initializing:
 ```csharp
 var abm = new AssetBundleManager();
 // ...
-var initializeAsync = abm.InitializeAsyn();
+var initializeAsync = abm.InitializeAsync();
 yield return initializeAsync;
 if (initializeAsync.Success) {
     // ...

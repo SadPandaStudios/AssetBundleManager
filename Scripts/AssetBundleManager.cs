@@ -1,16 +1,9 @@
-﻿#if NET_4_6 || NET_STANDARD_2_0
-#define AWAIT_SUPPORTED
-#endif
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-#if AWAIT_SUPPORTED
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
-
-#endif
 
 namespace AssetBundles
 {
@@ -302,10 +295,7 @@ namespace AssetBundles
             } else {
                 Manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
-
-#if UNITY_2017_1_OR_NEWER
                 Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, version));
-#endif
             }
 
             if (Manifest == null) {
@@ -436,7 +426,6 @@ namespace AssetBundles
             }
         }
 
-#if AWAIT_SUPPORTED
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         ///     Uses the platform name as the manifest name.  This is the default behaviour when
@@ -512,7 +501,6 @@ namespace AssetBundles
                 throw;
             }
         }
-#endif
 
         /// <summary>
         ///     Asynchronously downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
@@ -669,14 +657,14 @@ namespace AssetBundles
             inProgress.OnComplete(bundle);
         }
 
-        internal class AssetBundleContainer
+        private class AssetBundleContainer
         {
             public AssetBundle AssetBundle;
             public int References = 1;
             public string[] Dependencies;
         }
 
-        internal class DownloadInProgressContainer
+        private class DownloadInProgressContainer
         {
             public int References;
             public Action<AssetBundle> OnComplete;
