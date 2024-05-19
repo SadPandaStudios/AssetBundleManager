@@ -90,9 +90,16 @@ namespace AssetBundles
 
             req.SendWebRequest();
 
+            float lastProgress = 0;
+
             while (!req.isDone) {
-                cmd.OnProgress?.Invoke(req.downloadProgress);
+                lastProgress = req.downloadProgress;
+                cmd.OnProgress?.Invoke(lastProgress);
                 yield return null;
+            }
+
+            if (lastProgress < 1) {
+                cmd.OnProgress?.Invoke(1);
             }
 
             var isNetworkError = req.isNetworkError;
