@@ -41,7 +41,7 @@ namespace AssetBundles
                 case BuildTarget.StandaloneLinux64:
 #if !UNITY_2019_1_OR_NEWER
                 case BuildTarget.StandaloneLinuxUniversal:
-		case BuildTarget.StandaloneLinux:
+                case BuildTarget.StandaloneLinux:
 #endif
                     return "StandaloneLinux";
                 case BuildTarget.Switch:

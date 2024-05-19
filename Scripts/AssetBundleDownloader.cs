@@ -102,8 +102,13 @@ namespace AssetBundles
                 cmd.OnProgress?.Invoke(1);
             }
 
+#if UNITY_2021_2_OR_NEWER
+            var isNetworkError = req.result == UnityWebRequest.Result.ConnectionError;
+            var isHttpError = req.result == UnityWebRequest.Result.ProtocolError;
+#else
             var isNetworkError = req.isNetworkError;
             var isHttpError = req.isHttpError;
+#endif
 
             AssetBundle bundle = null;
 
