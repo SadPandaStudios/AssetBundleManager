@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if UNITY_2022_1_OR_NEWER && UNITY_WEBGL
+// Caching is not supported on WebGL platforms on Unity 2022.1+
+// https://docs.unity3d.com/2022.1/Documentation/ScriptReference/Caching.html
+#define ABM_DISABLE_CACHING
+#endif
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +18,7 @@ namespace AssetBundles
         public string BundleName;
         public Hash128 Hash;
         public uint Version;
+        public Action<float> OnProgress;
         public Action<AssetBundle> OnComplete;
     }
 
@@ -52,6 +59,10 @@ namespace AssetBundles
             if (!this.baseUri.EndsWith("/")) {
                 this.baseUri += "/";
             }
+
+#if ABM_DISABLE_CACHING
+            cachingDisabled = true;
+#endif
         }
 
         /// <summary>
@@ -78,43 +89,35 @@ namespace AssetBundles
             UnityWebRequest req;
             if (cachingDisabled || (cmd.Version <= 0 && cmd.Hash == DEFAULT_HASH)) {
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}].", uri));
-#if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri);
-#else
-                req = UnityWebRequest.GetAssetBundle(uri);
-#endif
             } else if (cmd.Hash == DEFAULT_HASH) {
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] v[{1}] [{2}].", Caching.IsVersionCached(uri, new Hash128(0, 0, 0, cmd.Version)) ? "cached" : "uncached", cmd.Version, uri));
-#if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Version, 0);
-#else
-                req = UnityWebRequest.GetAssetBundle(uri, cmd.Version, 0);
-#endif
             } else {
                 if (AssetBundleManager.debugLoggingEnabled) Debug.Log(string.Format("GetAssetBundle [{0}] [{1}] [{2}].", Caching.IsVersionCached(uri, cmd.Hash) ? "cached" : "uncached", uri, cmd.Hash));
-#if UNITY_2018_1_OR_NEWER
                 req = UnityWebRequestAssetBundle.GetAssetBundle(uri, cmd.Hash, 0);
-#else
-                req = UnityWebRequest.GetAssetBundle(uri, cmd.Hash, 0);
-#endif
             }
 
-#if UNITY_2017_2_OR_NEWER
             req.SendWebRequest();
-#else
-            req.Send();
-#endif
+
+            float lastProgress = 0;
 
             while (!req.isDone) {
+                lastProgress = req.downloadProgress;
+                cmd.OnProgress?.Invoke(lastProgress);
                 yield return null;
             }
 
-#if UNITY_2017_1_OR_NEWER
+            if (lastProgress < 1) {
+                cmd.OnProgress?.Invoke(1);
+            }
+
+#if UNITY_2021_2_OR_NEWER
+            var isNetworkError = req.result == UnityWebRequest.Result.ConnectionError;
+            var isHttpError = req.result == UnityWebRequest.Result.ProtocolError;
+#else
             var isNetworkError = req.isNetworkError;
             var isHttpError = req.isHttpError;
-#else
-            var isNetworkError = req.isError;
-            var isHttpError = (req.responseCode < 200 || req.responseCode > 299) && req.responseCode != 0;  // 0 indicates the cached version may have been downloaded.  If there was an error then req.isError should have a non-0 code.
 #endif
 
             AssetBundle bundle = null;

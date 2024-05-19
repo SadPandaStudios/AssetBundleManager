@@ -5,22 +5,22 @@ using UnityEngine;
 namespace AssetBundles
 {
     /// <summary>
-    ///     An asynchronous wrapper for the AssetBundleManager downloading system
+    ///     A coroutine wrapper for the AssetBundleManager downloading system
     /// </summary>
-    public class AssetBundleAsync : IEnumerator
+    public class AssetBundleRoutine : IEnumerator
     {
         public AssetBundle AssetBundle;
 
         public bool IsDone { get; private set; }
         public bool Failed { get; private set; }
 
-        public AssetBundleAsync(string bundleName, Action<string, Action<AssetBundle>> callToAction)
+        public AssetBundleRoutine(string bundleName, Action<float> onProgress, Action<string, Action<AssetBundle>, Action<float>> callToAction)
         {
             IsDone = false;
-            callToAction(bundleName, OnAssetBundleComplete);
+            callToAction(bundleName, OnAssetBundleComplete, onProgress);
         }
 
-        public AssetBundleAsync()
+        public AssetBundleRoutine()
         {
             IsDone = true;
             Failed = true;
@@ -47,14 +47,14 @@ namespace AssetBundles
     }
 
     /// <summary>
-    ///     An asynchronous wrapper for the AssetBundleManager manifest downloading system
+    ///     A coroutine wrapper for the AssetBundleManager manifest downloading system
     /// </summary>
-    public class AssetBundleManifestAsync : IEnumerator
+    public class AssetBundleManifestRoutine : IEnumerator
     {
         public bool Success { get; private set; }
         public bool IsDone { get; private set; }
 
-        public AssetBundleManifestAsync(string bundleName, bool getFreshManifest, Action<string, bool, Action<AssetBundle>> callToAction)
+        public AssetBundleManifestRoutine(string bundleName, bool getFreshManifest, Action<string, bool, Action<AssetBundle>> callToAction)
         {
             IsDone = false;
             callToAction(bundleName, getFreshManifest, OnAssetBundleManifestComplete);

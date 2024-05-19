@@ -1,16 +1,15 @@
-#if NET_4_6 || NET_STANDARD_2_0
-#define AWAIT_SUPPORTED
+#if UNITY_2022_1_OR_NEWER && UNITY_WEBGL
+// Caching is not supported on WebGL platforms on Unity 2022.1+
+// https://docs.unity3d.com/2022.1/Documentation/ScriptReference/Caching.html
+#define ABM_DISABLE_CACHING
 #endif
 
 using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-#if AWAIT_SUPPORTED
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
-
-#endif
 
 namespace AssetBundles
 {
@@ -207,9 +206,9 @@ namespace AssetBundles
         ///     using Unity's AssetBundleBrowser to create your bundles.
         /// </summary>
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
-        public AssetBundleManifestAsync InitializeAsync()
+        public AssetBundleManifestRoutine InitializeAsCoroutine()
         {
-            return InitializeAsync(platformName, true);
+            return InitializeAsCoroutine(platformName, true);
         }
 
         /// <summary>
@@ -220,15 +219,15 @@ namespace AssetBundles
         ///     Always try to download a new manifest even if one has already been cached.
         /// </param>
         /// <returns>An IEnumerator that can be yielded to until the system is ready.</returns>
-        public AssetBundleManifestAsync InitializeAsync(string manifestName, bool getFreshManifest)
+        public AssetBundleManifestRoutine InitializeAsCoroutine(string manifestName, bool getFreshManifest)
         {
             if (baseUri == null || baseUri.Length == 0) {
                 Debug.LogError("You need to set the base uri before you can initialize.");
                 return null;
             }
 
-            // Wrap the GetManifest with an async operation.
-            return new AssetBundleManifestAsync(manifestName, getFreshManifest, GetManifest);
+            // Wrap the GetManifest with a routine operation.
+            return new AssetBundleManifestRoutine(manifestName, getFreshManifest, GetManifest);
         }
 
         private void GetManifest(string bundleName, bool getFreshManifest, Action<AssetBundle> onComplete)
@@ -249,10 +248,12 @@ namespace AssetBundles
                 // Find the first cached version and then get the "next" one.
                 manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
 
+#if !ABM_DISABLE_CACHING
                 // The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
                 while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion))) {
                     manifestVersion++;
                 }
+#endif
             }
 #endif
 
@@ -304,7 +305,7 @@ namespace AssetBundles
                 Manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
 
-#if (UNITY_2017_1_OR_NEWER && !UNITY_2022_1_OR_NEWER) || (UNITY_2022_1_OR_NEWER && !UNITY_WEBGL)
+#if !ABM_DISABLE_CACHING
                 Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, version));
 #endif
             }
@@ -352,7 +353,8 @@ namespace AssetBundles
         /// </summary>
         /// <param name="bundleName">Name of the bundle to download.</param>
         /// <param name="onComplete">Action to perform when the bundle has been successfully downloaded.</param>
-        public void GetBundle(string bundleName, Action<AssetBundle> onComplete)
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
+        public void GetBundle(string bundleName, Action<AssetBundle> onComplete, Action<float> onProgress = null)
         {
             if (Initialized == false) {
                 Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
@@ -360,7 +362,7 @@ namespace AssetBundles
                 return;
             }
 
-            GetBundle(bundleName, onComplete, DownloadSettings.UseCacheIfAvailable);
+            GetBundle(bundleName, onComplete, DownloadSettings.UseCacheIfAvailable, onProgress);
         }
 
         /// <summary>
@@ -375,7 +377,8 @@ namespace AssetBundles
         ///     Important!  If the bundle is currently "active" (it has not been unloaded) then the active bundle will be used
         ///     regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
         /// </param>
-        public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings)
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
+        public void GetBundle(string bundleName, Action<AssetBundle> onComplete, DownloadSettings downloadSettings, Action<float> onProgress = null)
         {
             if (Initialized == false) {
                 Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
@@ -389,7 +392,8 @@ namespace AssetBundles
 
             if (activeBundles.TryGetValue(bundleName, out active)) {
                 active.References++;
-                onComplete(active.AssetBundle);
+                onProgress?.Invoke(1);
+                onComplete.Invoke(active.AssetBundle);
                 return;
             }
 
@@ -406,7 +410,8 @@ namespace AssetBundles
             var mainBundle = new AssetBundleDownloadCommand {
                 BundleName = bundleName,
                 Hash = downloadSettings == DownloadSettings.UseCacheIfAvailable ? Manifest.GetAssetBundleHash(bundleName) : default(Hash128),
-                OnComplete = bundle => OnDownloadComplete(bundleName, bundle)
+                OnComplete = bundle => OnDownloadComplete(bundleName, bundle),
+                OnProgress = onProgress
             };
 
             var dependencies = Manifest.GetDirectDependencies(bundleName);
@@ -437,15 +442,14 @@ namespace AssetBundles
             }
         }
 
-#if AWAIT_SUPPORTED
         /// <summary>
         ///     Downloads the AssetBundle manifest and prepares the system for bundle management.
         ///     Uses the platform name as the manifest name.  This is the default behaviour when
         ///     using Unity's AssetBundleBrowser to create your bundles.
         /// </summary>
-        public async Task<bool> Initialize()
+        public async Task<bool> InitializeAsync()
         {
-            return await Initialize(platformName, true);
+            return await InitializeAsync(platformName, true);
         }
 
         /// <summary>
@@ -455,7 +459,7 @@ namespace AssetBundles
         /// <param name="getFreshManifest">
         ///     Always try to download a new manifest even if one has already been cached.
         /// </param>
-        public async Task<bool> Initialize(string manifestName, bool getFreshManifest)
+        public async Task<bool> InitializeAsync(string manifestName, bool getFreshManifest)
         {
             var completionSource = new TaskCompletionSource<bool>();
             var onComplete = new Action<bool>(b => completionSource.SetResult(b));
@@ -469,11 +473,12 @@ namespace AssetBundles
         ///     are done with it.
         /// </summary>
         /// <param name="bundleName">Name of the bundle to download.</param>
-        public async Task<AssetBundle> GetBundle(string bundleName)
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
+        public async Task<AssetBundle> GetBundleAsync(string bundleName, Action<float> onProgress = null)
         {
             var completionSource = new TaskCompletionSource<AssetBundle>();
             var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
-            GetBundle(bundleName, onComplete);
+            GetBundle(bundleName, onComplete, onProgress);
             return await completionSource.Task;
         }
 
@@ -488,11 +493,12 @@ namespace AssetBundles
         ///     Important!  If the bundle is currently "active" (it has not been unloaded) then the active bundle will be used
         ///     regardless of this setting.  If it's important that a new version is downloaded then be sure it isn't active.
         /// </param>
-        public async Task<AssetBundle> GetBundle(string bundleName, DownloadSettings downloadSettings)
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
+        public async Task<AssetBundle> GetBundleAsync(string bundleName, DownloadSettings downloadSettings, Action<float> onProgress = null)
         {
             var completionSource = new TaskCompletionSource<AssetBundle>();
             var onComplete = new Action<AssetBundle>(bundle => completionSource.SetResult(bundle));
-            GetBundle(bundleName, onComplete, downloadSettings);
+            GetBundle(bundleName, onComplete, downloadSettings, onProgress);
             return await completionSource.Task;
         }
 
@@ -502,18 +508,18 @@ namespace AssetBundles
         /// <param name="bundleName">Name of the bundle to donwnload.</param>
         /// <param name="levelName">Name of the unity scene to load.</param>
         /// <param name="loadSceneMode">See <see cref="LoadSceneMode">UnityEngine.SceneManagement.LoadSceneMode</see>.</param>
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
         /// <returns></returns>
-        public async Task<AsyncOperation> LoadLevelAsync(string bundleName, string levelName, LoadSceneMode loadSceneMode)
+        public async Task<AsyncOperation> LoadLevelAsync(string bundleName, string levelName, LoadSceneMode loadSceneMode, Action<float> onProgress = null)
         {
             try {
-                await GetBundle(bundleName);
+                await GetBundleAsync(bundleName, onProgress);
                 return SceneManager.LoadSceneAsync(levelName, loadSceneMode);
             } catch {
                 Debug.LogError($"Error while loading the scene {levelName} from {bundleName}");
                 throw;
             }
         }
-#endif
 
         /// <summary>
         ///     Asynchronously downloads an AssetBundle or returns a cached AssetBundle if it has already been downloaded.
@@ -521,15 +527,16 @@ namespace AssetBundles
         ///     are done with it.
         /// </summary>
         /// <param name="bundleName"></param>
+        /// <param name="onProgress">Callback to send the percentage of a bundle download (0.0 -> 1.0)</param>
         /// <returns></returns>
-        public AssetBundleAsync GetBundleAsync(string bundleName)
+        public AssetBundleRoutine GetBundleAsCoroutine(string bundleName, Action<float> onProgress = null)
         {
             if (Initialized == false) {
                 Debug.LogError("AssetBundleManager must be initialized before you can get a bundle.");
-                return new AssetBundleAsync();
+                return new AssetBundleRoutine();
             }
 
-            return new AssetBundleAsync(bundleName, GetBundle);
+            return new AssetBundleRoutine(bundleName, onProgress, GetBundle);
         }
 
 
@@ -570,10 +577,10 @@ namespace AssetBundles
             if (Manifest == null) return false;
             if (useHash) bundleName = GetHashedBundleName(bundleName);
             if (string.IsNullOrEmpty(bundleName)) return false;
-#if (UNITY_2017_1_OR_NEWER && !UNITY_2022_1_OR_NEWER) || (UNITY_2022_1_OR_NEWER && !UNITY_WEBGL)
-            return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
-#else
+#if ABM_DISABLE_CACHING
             return false;
+#else
+            return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
 #endif
         }
 
@@ -674,14 +681,14 @@ namespace AssetBundles
             inProgress.OnComplete(bundle);
         }
 
-        internal class AssetBundleContainer
+        private class AssetBundleContainer
         {
             public AssetBundle AssetBundle;
             public int References = 1;
             public string[] Dependencies;
         }
 
-        internal class DownloadInProgressContainer
+        private class DownloadInProgressContainer
         {
             public int References;
             public Action<AssetBundle> OnComplete;

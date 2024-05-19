@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -34,24 +34,18 @@ namespace AssetBundles
                 case BuildTarget.StandaloneWindows:
                 case BuildTarget.StandaloneWindows64:
                     return "StandaloneWindows";
-#if UNITY_2017_4_OR_NEWER
                 case BuildTarget.StandaloneOSX:
                     return "StandaloneOSX";
-#else
-                case BuildTarget.StandaloneOSXIntel:
-                case BuildTarget.StandaloneOSXIntel64:
-                    return "StandaloneOSXIntel";
-#endif
                 // Add more build targets for your own.
                 // If you add more targets, don't forget to add the same platforms to the function below.
-                case BuildTarget.StandaloneLinux:
                 case BuildTarget.StandaloneLinux64:
+#if !UNITY_2019_1_OR_NEWER
                 case BuildTarget.StandaloneLinuxUniversal:
+                case BuildTarget.StandaloneLinux:
+#endif
                     return "StandaloneLinux";
-#if UNITY_SWITCH
                 case BuildTarget.Switch:
                     return "Switch";
-#endif
                 default:
                     Debug.Log("Unknown BuildTarget: Using Default Enum Name: " + target);
                     return target.ToString();
@@ -72,19 +66,12 @@ namespace AssetBundles
                     return "WebGL";
                 case RuntimePlatform.WindowsPlayer:
                     return "StandaloneWindows";
-#if UNITY_2017_4_OR_NEWER
                 case RuntimePlatform.OSXPlayer:
                     return "StandaloneOSX";
-#else
-                case RuntimePlatform.OSXPlayer:
-                    return "StandaloneOSXIntel";
-#endif
                 case RuntimePlatform.LinuxPlayer:
                     return "StandaloneLinux";
-#if UNITY_SWITCH
                 case RuntimePlatform.Switch:
                     return "Switch";
-#endif
                 // Add more build targets for your own.
                 // If you add more targets, don't forget to add the same platforms to the function above.
                 default:

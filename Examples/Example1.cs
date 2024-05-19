@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace AssetBundles
 {
@@ -16,7 +17,7 @@ namespace AssetBundles
         private void OnAssetBundleManagerInitialized(bool success)
         {
             if (success) {
-                abm.GetBundle("BundleNameHere", OnAssetBundleDownloaded);
+                abm.GetBundle("BundleNameHere", OnAssetBundleDownloaded, OnProgress);
             } else {
                 Debug.LogError("Error initializing ABM.");
             }
@@ -30,6 +31,11 @@ namespace AssetBundles
             }
 
             abm.Dispose();
+        }
+
+        private void OnProgress(float progress)
+        {
+            Debug.Log("Current Progress: " + Math.Round(progress * 100, 2) + "%");
         }
     }
 }
