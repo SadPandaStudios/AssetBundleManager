@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if UNITY_2022_1_OR_NEWER && UNITY_WEBGL
+// Caching is not supported on WebGL platforms on Unity 2022.1+
+// https://docs.unity3d.com/2022.1/Documentation/ScriptReference/Caching.html
+#define ABM_DISABLE_CACHING
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -242,10 +248,12 @@ namespace AssetBundles
                 // Find the first cached version and then get the "next" one.
                 manifestVersion = (uint)PlayerPrefs.GetInt(MANIFEST_PLAYERPREFS_KEY, 0) + 1;
 
+#if !ABM_DISABLE_CACHING
                 // The PlayerPrefs value may have been wiped so we have to calculate what the next uncached manifest version is.
                 while (Caching.IsVersionCached(bundleName, new Hash128(0, 0, 0, manifestVersion))) {
                     manifestVersion++;
                 }
+#endif
             }
 
             GetManifestInternal(bundleName, manifestVersion, 0);
@@ -295,7 +303,9 @@ namespace AssetBundles
             } else {
                 Manifest = manifestBundle.LoadAsset<AssetBundleManifest>("assetbundlemanifest");
                 PlayerPrefs.SetInt(MANIFEST_PLAYERPREFS_KEY, (int)version);
+#if !ABM_DISABLE_CACHING
                 Caching.ClearOtherCachedVersions(bundleName, new Hash128(0, 0, 0, version));
+#endif
             }
 
             if (Manifest == null) {
@@ -565,7 +575,11 @@ namespace AssetBundles
             if (Manifest == null) return false;
             if (useHash) bundleName = GetHashedBundleName(bundleName);
             if (string.IsNullOrEmpty(bundleName)) return false;
+#if ABM_DISABLE_CACHING
+            return false;
+#else
             return Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName));
+#endif
         }
 
         /// <summary>

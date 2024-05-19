@@ -1,4 +1,10 @@
-﻿using System;
+﻿#if UNITY_2022_1_OR_NEWER && UNITY_WEBGL
+// Caching is not supported on WebGL platforms on Unity 2022.1+
+// https://docs.unity3d.com/2022.1/Documentation/ScriptReference/Caching.html
+#define ABM_DISABLE_CACHING
+#endif
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,6 +59,10 @@ namespace AssetBundles
             if (!this.baseUri.EndsWith("/")) {
                 this.baseUri += "/";
             }
+
+#if ABM_DISABLE_CACHING
+            cachingDisabled = true;
+#endif
         }
 
         /// <summary>
