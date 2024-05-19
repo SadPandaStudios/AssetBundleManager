@@ -9,11 +9,11 @@ namespace AssetBundles
         {
             AssetBundleManager abm = new AssetBundleManager();
             abm.SetBaseUri("https://www.example.com/bundles");
-            var initializeAsync = abm.InitializeAsync();
+            var initializeAsync = abm.InitializeAsCoroutine();
             yield return initializeAsync;
 
             if (initializeAsync.Success) {
-                AssetBundleAsync bundle = abm.GetBundleAsync("BundleNameHere");
+                AssetBundleRoutine bundle = abm.GetBundleAsCoroutine("BundleNameHere");
                 yield return bundle;
 
                 if (bundle.AssetBundle != null) {
